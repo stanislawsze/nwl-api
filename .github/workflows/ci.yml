@@ -1,6 +1,4 @@
 name: CI
-permissions:
-  id-token: write
 on:
   push:
     branches: ["main", "develop"]
@@ -13,6 +11,11 @@ concurrency:
 
 jobs:
   quality-and-tests:
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+
     runs-on: ubuntu-latest
 
     services:
