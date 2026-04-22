@@ -1,0 +1,18 @@
+{
+  "recommendations": [
+    "bmewburn.vscode-intelephense-client",
+    "open-southeners.laravel-pint",
+    "onecentlin.laravel-blade",
+    "editorconfig.editorconfig",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "mikestead.dotenv",
+    "usernamehw.errorlens",
+    "eamodio.gitlens",
+    "davidanson.vscode-markdownlint",
+    "redhat.vscode-yaml",
+    "ms-azuretools.vscode-docker",
+    "ms-vscode.vscode-json",
+    "bradlc.vscode-tailwindcss"
+  ]
+}
