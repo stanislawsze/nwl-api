@@ -62,8 +62,9 @@ Main goals:
 ## 2. Technical stack
 
 ### Backend
+
 - PHP 8.4+
-- Laravel 12
+- Laravel 13
 - PostgreSQL
 - Redis
 - Laravel Sanctum
@@ -77,15 +78,18 @@ Main goals:
 - Scramble
 
 ### Domain and API support
+
 - spatie/laravel-permission
 - spatie/laravel-activitylog
 - spatie/laravel-data
 - spatie/laravel-query-builder
 
 ### Related frontend
+
 - React + TypeScript admin panel in a separate repository or package
 
 ### Language policy
+
 - **All repository-facing content must be written in English**.
 - This includes code comments, commit messages, docs, PR descriptions, ADRs, issue titles, and API-facing developer documentation.
 
@@ -237,7 +241,7 @@ composer require pestphp/pest --dev --with-all-dependencies
 ./vendor/bin/pest --init
 ```
 
-Laravel 12 upgrade guidance explicitly references Pest 3 support, and Pest provides its own initialization step. citeturn583322search4
+Laravel 13 upgrade guidance explicitly references Pest 3 support, and Pest provides its own initialization step. citeturn583322search4
 
 ### 6.7 Publish package configuration
 
@@ -345,11 +349,11 @@ Localization is a first-class requirement.
 - Translation keys must be stable and explicit.
 - Do not hardcode user-facing strings inside controllers, services, policies, notifications, or frontend components.
 - Prefer translation keys for:
-  - validation messages
-  - API error messages intended for frontend display
-  - notification titles and bodies
-  - admin panel labels
-  - moderation reasons shown to users
+    - validation messages
+    - API error messages intended for frontend display
+    - notification titles and bodies
+    - admin panel labels
+    - moderation reasons shown to users
 
 ### Laravel localization conventions
 
@@ -465,35 +469,47 @@ app/
 ## 11. Required packages
 
 ### Sanctum
+
 Used for:
+
 - SPA authentication
 - personal access tokens
 - service-to-service token flows where appropriate
 
 ### Reverb
+
 Used for:
+
 - real-time updates
 - staff presence channels
 - moderation action status updates
 - live log streams
 
 ### Pulse
+
 Used for:
+
 - application observability
 - workload and performance visibility
 
 ### Pennant
+
 Used for:
+
 - feature flags
 - staged rollout of features
 
 ### Telescope
+
 Used for:
+
 - local request and exception inspection
 - queue, cache, query, and notification visibility
 
 ### Scramble
+
 Used for:
+
 - automatic OpenAPI generation
 - `/docs/api`
 - `/docs/api.json`
@@ -501,18 +517,24 @@ Used for:
 Scramble documents request parameters from validation rules and stores JSON resources as reusable schemas in the OpenAPI document. citeturn583322search1turn583322search9turn583322search13turn583322search19
 
 ### Spatie Laravel Permission
+
 Used for:
+
 - roles
 - permissions
 - integration with Laravel authorization checks
 
 ### Spatie Activitylog
+
 Used for:
+
 - business audit trail
 - sensitive action history
 
 ### Spatie Laravel Data
+
 Used for:
+
 - DTOs
 - explicit request/response boundaries
 - strong typing and transformation
@@ -574,6 +596,7 @@ php artisan test --parallel
 ### Expected test layers
 
 #### Unit
+
 - pure services
 - value objects
 - signature / HMAC validation
@@ -581,6 +604,7 @@ php artisan test --parallel
 - feature flag evaluation helpers
 
 #### Feature
+
 - API endpoints
 - auth and token flows
 - policies and permissions
@@ -589,6 +613,7 @@ php artisan test --parallel
 - cache invalidation
 
 #### Integration
+
 - Redis queueing
 - broadcasting
 - FiveM callback flows
@@ -637,6 +662,7 @@ php artisan reverb:start
 ### Technical logs
 
 Use Laravel logging for:
+
 - exceptions
 - infrastructure errors
 - local debug visibility
@@ -645,6 +671,7 @@ Use Laravel logging for:
 ### Business audit logs
 
 Use `spatie/laravel-activitylog` for:
+
 - who performed an action
 - on which target
 - under which tenant / server
@@ -699,6 +726,7 @@ This project maintains a `CHANGELOG.md` using Keep a Changelog structure.
 Recommended extensions are listed in `.vscode/extensions.json`.
 
 Main ones:
+
 - PHP Intelephense
 - Laravel Extension Pack or targeted Laravel extensions
 - EditorConfig

@@ -32,12 +32,14 @@ All contributors must follow these standards.
 Controllers must remain thin.
 
 Controllers may:
+
 - receive requests
 - call policies / authorization helpers
 - delegate to actions or services
 - return API resources or structured JSON responses
 
 Controllers must not:
+
 - contain large business workflows
 - contain large query-building logic
 - perform multi-step side effects directly
@@ -48,12 +50,14 @@ Controllers must not:
 Use dedicated actions for explicit use cases.
 
 Examples:
+
 - `CreateModerationAction`
 - `DispatchGameCommand`
 - `RotateServerToken`
 - `AssignRoleToUser`
 
 Rules:
+
 - one action = one clear business purpose
 - action names must be verbs or verb phrases
 - avoid giant generic services such as `ServerService` containing 30 unrelated methods
@@ -63,6 +67,7 @@ Rules:
 Use DTOs at boundaries.
 
 Recommended use cases:
+
 - validated input mapping
 - external payload normalization
 - API response transformation
@@ -75,6 +80,7 @@ Do not pass large associative arrays across the application when a DTO would cla
 Authorization must be explicit.
 
 Rules:
+
 - use Policies for model or domain-specific authorization
 - use permissions for coarse-grained capabilities
 - do not hardcode authorization assumptions in controllers without using Laravel authorization facilities
@@ -89,6 +95,7 @@ Rules:
 Use PascalCase.
 
 Examples:
+
 - `ServerPolicy`
 - `ModerationActionResource`
 - `CreateBanAction`
@@ -99,6 +106,7 @@ Examples:
 Use camelCase.
 
 Examples:
+
 - `dispatchCommand()`
 - `currentServer`
 - `moderationReason`
@@ -108,6 +116,7 @@ Examples:
 Use snake_case plural names.
 
 Examples:
+
 - `servers`
 - `players`
 - `moderation_actions`
@@ -118,6 +127,7 @@ Examples:
 Use snake_case.
 
 Examples:
+
 - `tenant_id`
 - `server_id`
 - `performed_by`
@@ -128,6 +138,7 @@ Examples:
 Use dot notation.
 
 Examples:
+
 - `api.v1.players.index`
 - `api.v1.players.show`
 - `api.v1.moderation.store`
@@ -137,6 +148,7 @@ Examples:
 Use lowercase dot notation.
 
 Examples:
+
 - `common.actions.save`
 - `moderation.ban.created`
 - `servers.status.online`
@@ -162,6 +174,7 @@ app/Domain/<DomainName>/
 ```
 
 Rules:
+
 - organize by business domain first
 - avoid dumping all logic under `Services`
 - extract technical helpers into `Support` only when they are truly cross-domain
@@ -173,6 +186,7 @@ Rules:
 ### 6.1 Allowed comments
 
 Comments should explain:
+
 - business invariants
 - non-obvious technical constraints
 - integration quirks
@@ -197,6 +211,7 @@ Good:
 ### 6.3 Docblocks
 
 Use docblocks when they add real value:
+
 - generic templates
 - array shapes when unavoidable
 - integration notes
@@ -221,9 +236,9 @@ Use a predictable format:
 
 ```json
 {
-  "message": "Forbidden",
-  "code": "authorization_denied",
-  "errors": []
+    "message": "Forbidden",
+    "code": "authorization_denied",
+    "errors": []
 }
 ```
 
@@ -234,6 +249,7 @@ Use a predictable format:
 ### 8.1 Technical logs
 
 Use Laravel logging for:
+
 - exceptions
 - infrastructure failures
 - unexpected integration failures
@@ -242,6 +258,7 @@ Use Laravel logging for:
 ### 8.2 Audit logs
 
 Use business audit logs for:
+
 - staff actions
 - moderation decisions
 - role changes
@@ -275,6 +292,7 @@ Every non-trivial feature must be tested.
 ### 10.1 Unit tests
 
 Use unit tests for:
+
 - pure domain services
 - value objects
 - parsers and validators
@@ -284,6 +302,7 @@ Use unit tests for:
 ### 10.2 Feature tests
 
 Use feature tests for:
+
 - API endpoints
 - auth flows
 - policies
@@ -295,6 +314,7 @@ Use feature tests for:
 ### 10.3 Integration tests
 
 Use integration tests for:
+
 - Redis-backed workflows
 - queue processing
 - broadcasting
@@ -305,6 +325,7 @@ Use integration tests for:
 Prefer descriptive names.
 
 Examples:
+
 - `it_creates_a_ban_and_records_an_audit_entry`
 - `it_rejects_unsigned_game_callbacks`
 - `it_allows_server_admins_to_view_their_own_server_players`
@@ -355,6 +376,7 @@ tenant:{tenantId}:server:{serverId}:players:online
 Use Conventional Commits.
 
 Examples:
+
 - `feat(auth): add server token rotation`
 - `fix(game-bridge): reject stale callback timestamps`
 - `docs(coding-standards): add localization rules`
@@ -362,6 +384,7 @@ Examples:
 ### 14.2 Pull requests
 
 A pull request must:
+
 - describe the purpose clearly
 - mention risks or migration impacts
 - include test updates if behavior changed
@@ -370,6 +393,7 @@ A pull request must:
 ### 14.3 Review expectations
 
 Review for:
+
 - correctness
 - readability
 - architecture consistency
@@ -384,6 +408,7 @@ Review for:
 Even though this repository is backend-first, backend contributors must preserve frontend consistency.
 
 Rules:
+
 - do not break response contracts casually
 - use stable enum values
 - prefer additive changes over breaking ones
@@ -406,3 +431,47 @@ Mandatory checks before opening a pull request:
 ## 17. Final rule
 
 When unsure, choose the most explicit, testable, and maintainable solution.
+
+## Static Analysis
+
+The project uses PHPStan with Larastan.
+
+Rules:
+
+- Shared configuration lives in `phpstan.neon.dist`
+- A baseline may exist in `phpstan-baseline.neon`
+- Do not add broad `ignoreErrors` patterns without justification
+- Prefer fixing the code over weakening the analysis
+- New code should not introduce new baseline entries
+
+Run locally:
+
+- `composer analyse`
+- `composer analyse:baseline`
+
+## Code Style
+
+The project uses Laravel Pint.
+
+Rules:
+
+- Shared formatting config lives in `pint.json`
+- Formatting must be consistent before opening a pull request
+- CI validates formatting using `composer lint`
+
+Run locally:
+
+- `composer format`
+- `composer lint`
+
+## Before Opening a Pull Request
+
+Run:
+
+- `composer lint`
+- `composer analyse`
+- `composer test`
+
+Or simply:
+
+- `composer quality`
