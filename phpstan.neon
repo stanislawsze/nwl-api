@@ -1,0 +1,42 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 6
+
+    paths:
+        - app
+        - bootstrap/app.php
+        - config
+        - database
+        - routes
+        - tests
+
+    tmpDir: storage/phpstan
+
+    parallel:
+        maximumNumberOfProcesses: 4
+
+    treatPhpDocTypesAsCertain: false
+    checkMissingIterableValueType: true
+    checkUninitializedProperties: true
+    reportUnmatchedIgnoredErrors: true
+
+    excludePaths:
+        analyse:
+            - bootstrap/cache/*
+            - storage/*
+            - vendor/*
+            - database/schema/*
+            - database/factories/*
+            - database/seeders/*
+
+    ignoreErrors:
+        # Add only temporary and well-justified ignores here.
+        # Keep this list short and documented.
+
+    universalObjectCratesClasses:
+        - stdClass
+
+    scanFiles:
+        - bootstrap/app.php
