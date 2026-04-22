@@ -1,142 +1,100 @@
-# Developer Onboarding
+# Onboarding
 
 ## Goal
 
-This document helps a new developer become productive quickly on the project.
+This document helps a new developer become productive quickly and safely.
 
----
+## Prerequisites
 
-## 1. Required local services
+Required local tools:
 
-You need:
-
-- PHP 8.4+
-- Composer
-- PostgreSQL
-- Redis
-- Node.js LTS
-- npm
+- Docker
+- Docker Compose or Docker Desktop
 - Git
+
+Optional local tools:
+
 - VS Code
+- DBeaver / TablePlus / pgAdmin
+- Redis Insight
+- Bruno / Postman
 
----
-
-## 2. First local setup
+## First-time setup
 
 ```bash
 git clone <repository-url>
 cd nwl-api
-
-composer install
-npm install
-
 cp .env.example .env
-php artisan key:generate
-php artisan migrate
-npm run build
+docker compose up -d --build
+docker compose exec app composer install
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate
 ```
 
----
-
-## 3. Start local services
-
-### API
+If frontend assets are required inside the app container:
 
 ```bash
-php artisan serve
+docker compose exec app npm install
+docker compose exec app npm run build
 ```
 
-### Queue worker
+## Daily workflow
+
+Start containers:
 
 ```bash
-php artisan queue:listen
+docker compose up -d
 ```
 
-### Reverb
+Run commands through the application container:
 
 ```bash
-php artisan reverb:start
+docker compose exec app php artisan migrate
+docker compose exec app php artisan test
+docker compose exec app ./vendor/bin/pint
+docker compose exec app ./vendor/bin/phpstan analyse
 ```
 
-### Vite
+Stop containers:
 
 ```bash
-npm run dev
+docker compose down
 ```
 
----
-
-## 4. Sanity checks
-
-Verify:
-
-- API responds
-- database connection works
-- Redis connection works
-- `/docs/api` is accessible
-- tests pass
-
----
-
-## 5. VS Code extensions
-
-Recommended extensions:
-
-### PHP / Laravel
-
-- PHP Intelephense
-- Laravel Pint
-- Laravel Blade
-- EditorConfig
-
-### JavaScript / TypeScript / formatting
-
-- ESLint
-- Prettier
-- Tailwind CSS IntelliSense
-
-### Productivity
-
-- DotENV
-- Error Lens
-- GitLens
-- Markdownlint
-- YAML
-- Docker
-
-Extension recommendations are also stored in `.vscode/extensions.json`.
-
----
-
-## 6. Local workflow
-
-Before starting work:
-
-- pull latest changes
-- run migrations if needed
-- run tests if the branch changed critical code
+## Development expectations
 
 Before opening a pull request:
 
-```bash
-./vendor/bin/pint
-./vendor/bin/phpstan analyse
-./vendor/bin/pest
-```
+- run formatting
+- run static analysis
+- run tests
+- update docs if behavior changed
+- avoid leaving debug helpers such as `dd()` or `dump()`
 
----
+## Recommended VS Code extensions
 
-## 7. Documentation to read first
+- EditorConfig.EditorConfig
+- bmewburn.vscode-intelephense-client
+- xdebug.php-debug
+- open-southeners.laravel-pint
+- amiralizadeh9480.laravel-extra-intellisense
+- onecentlin.laravel-blade
+- ms-azuretools.vscode-docker
+- GitHub.vscode-github-actions
+- streetsidesoftware.code-spell-checker
+- usernamehw.errorlens
+- esbenp.prettier-vscode
+- dbaeumer.vscode-eslint
+- mikestead.dotenv
+- yzhang.markdown-all-in-one
+- davidanson.vscode-markdownlint
+- redhat.vscode-yaml
 
-Read these files in order:
+## Repository conventions
 
-1. `README.md`
-2. `CODE_STANDARDS.md`
-3. `CONTRIBUTING.md`
-4. `CHANGELOG.md`
-
----
-
-## 8. Language rule
-
-All repository-facing content is written in English.
+- Use English everywhere in repository-facing text.
+- Use conventional commits.
+- Keep controllers thin.
+- Use policies and permissions explicitly.
+- Use DTOs where they improve clarity.
+- Log sensitive staff actions.

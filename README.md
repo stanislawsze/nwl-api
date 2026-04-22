@@ -222,6 +222,7 @@ git push
 
 - /docs/api (Scramble)
 - OpenAPI JSON available
+- [Repository Doc](./docs/README.md)
 
 ---
 
