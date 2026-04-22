@@ -11,10 +11,6 @@ concurrency:
 
 jobs:
   quality-and-tests:
-    permissions:
-      id-token: write
-      contents: read
-      attestations: write
 
     runs-on: ubuntu-latest
 
@@ -111,6 +107,3 @@ jobs:
 
       - name: Run Pest
         run: ./vendor/bin/pest --colors=always
-
-      - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v4.1.0
