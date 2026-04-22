@@ -83,17 +83,20 @@ Verify:
 Recommended extensions:
 
 ### PHP / Laravel
+
 - PHP Intelephense
 - Laravel Pint
 - Laravel Blade
 - EditorConfig
 
 ### JavaScript / TypeScript / formatting
+
 - ESLint
 - Prettier
 - Tailwind CSS IntelliSense
 
 ### Productivity
+
 - DotENV
 - Error Lens
 - GitLens
