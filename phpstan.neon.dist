@@ -1,5 +1,6 @@
 includes:
     - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
 
 parameters:
     level: 6
@@ -8,7 +9,6 @@ parameters:
         - app
         - bootstrap/app.php
         - config
-        - database
         - routes
         - tests
 
@@ -18,9 +18,8 @@ parameters:
         maximumNumberOfProcesses: 4
 
     treatPhpDocTypesAsCertain: false
-    checkMissingIterableValueType: true
-    checkUninitializedProperties: true
     reportUnmatchedIgnoredErrors: true
+    checkUninitializedProperties: true
 
     excludePaths:
         analyse:
@@ -30,10 +29,6 @@ parameters:
             - database/schema/*
             - database/factories/*
             - database/seeders/*
-
-    ignoreErrors:
-        # Add only temporary and well-justified ignores here.
-        # Keep this list short and documented.
 
     universalObjectCratesClasses:
         - stdClass

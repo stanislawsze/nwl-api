@@ -81,6 +81,26 @@
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
+        ],
+        "lint": [
+            "./vendor/bin/pint --test"
+        ],
+        "format": [
+            "./vendor/bin/pint"
+        ],
+        "analyse": [
+            "./vendor/bin/phpstan analyse --memory-limit=1G"
+        ],
+        "analyse:baseline": [
+            "./vendor/bin/phpstan analyse --generate-baseline=phpstan-baseline.neon --memory-limit=1G"
+        ],
+        "test:coverage": [
+            "php artisan test --coverage"
+        ],
+        "quality": [
+            "@lint",
+            "@analyse",
+            "@test"
         ]
     },
     "extra": {
