@@ -241,7 +241,7 @@ composer require pestphp/pest --dev --with-all-dependencies
 ./vendor/bin/pest --init
 ```
 
-Laravel 12 upgrade guidance explicitly references Pest 3 support, and Pest provides its own initialization step. citeturn583322search4
+Laravel 13 upgrade guidance explicitly references Pest 3 support, and Pest provides its own initialization step. citeturn583322search4
 
 ### 6.7 Publish package configuration
 
