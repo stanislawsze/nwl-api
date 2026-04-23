@@ -10,7 +10,7 @@ describe('Authentication API', function () {
 
     beforeEach(function () {
         // Create the user role that is assigned during registration
-        Role::create(['name' => 'user']);
+        Role::firstOrCreate(['name' => 'user']);
     });
 
     describe('POST /api/v1/register', function () {

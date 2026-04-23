@@ -12,8 +12,8 @@ uses(TestCase::class, RefreshDatabase::class);
 describe('AuthResource', function () {
     beforeEach(function () {
         // Create the user role and permission
-        Role::create(['name' => 'user']);
-        Permission::create(['name' => 'view users']);
+        Role::firstOrCreate(['name' => 'user']);
+        Permission::firstOrCreate(['name' => 'view users']);
     });
 
     it('transforms user data correctly', function () {

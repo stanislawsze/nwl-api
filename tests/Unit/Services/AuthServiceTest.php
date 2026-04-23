@@ -16,7 +16,7 @@ uses(TestCase::class, RefreshDatabase::class);
 describe('AuthService', function () {
     beforeEach(function () {
         // Create the user role
-        Role::create(['name' => 'user']);
+        Role::firstOrCreate(['name' => 'user']);
 
         $this->authMock = mock(StatefulGuard::class);
         $this->hashMock = mock(HashManager::class);

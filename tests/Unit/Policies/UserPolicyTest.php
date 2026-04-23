@@ -13,10 +13,10 @@ describe('UserPolicy', function () {
         $this->policy = new UserPolicy;
 
         // Create permissions used in the policy
-        Permission::create(['name' => 'view users']);
-        Permission::create(['name' => 'create users']);
-        Permission::create(['name' => 'edit users']);
-        Permission::create(['name' => 'delete users']);
+        Permission::firstOrCreate(['name' => 'view users']);
+        Permission::firstOrCreate(['name' => 'create users']);
+        Permission::firstOrCreate(['name' => 'edit users']);
+        Permission::firstOrCreate(['name' => 'delete users']);
     });
 
     describe('viewAny()', function () {

@@ -14,10 +14,10 @@ describe('RolePolicy', function () {
         $this->policy = new RolePolicy;
 
         // Create permissions used in the policy
-        Permission::create(['name' => 'view roles']);
-        Permission::create(['name' => 'create roles']);
-        Permission::create(['name' => 'edit roles']);
-        Permission::create(['name' => 'delete roles']);
+        Permission::firstOrCreate(['name' => 'view roles']);
+        Permission::firstOrCreate(['name' => 'create roles']);
+        Permission::firstOrCreate(['name' => 'edit roles']);
+        Permission::firstOrCreate(['name' => 'delete roles']);
     });
 
     describe('viewAny()', function () {
