@@ -7,6 +7,7 @@ use App\Domain\Auth\DTOs\LoginUserDTO;
 use App\Domain\Auth\DTOs\RegisterUserDTO;
 use App\Domain\Auth\Events\UserAuthenticated;
 use App\Domain\Auth\Events\UserRegistered;
+use App\Domain\Tenancy\Services\TenancyAuditLogService;
 use App\Domain\Tenancy\Services\TenancyService;
 use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
@@ -25,6 +26,7 @@ class AuthService
         protected AuthFactory $auth,
         protected HashManager $hash,
         protected TenancyService $tenancyService,
+        protected TenancyAuditLogService $tenancyAuditLog,
     ) {}
 
     public function register(RegisterUserDTO $dto): AuthenticatedUserDTO
@@ -46,7 +48,8 @@ class AuthService
             }
 
             $user = $this->createUser($dto);
-            $this->tenancyService->acceptInvitation($user, $token);
+            $invitation = $this->tenancyService->acceptInvitation($user, $token);
+            $this->tenancyAuditLog->invitationRegistered($user, $invitation);
 
             $user->loadMissing('currentTenant');
 

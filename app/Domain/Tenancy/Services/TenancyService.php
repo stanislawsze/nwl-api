@@ -15,6 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class TenancyService
 {
+    public function __construct(
+        protected TenancyAuditLogService $auditLog,
+    ) {}
+
     public function invitationByToken(string $token): ?TenantInvitation
     {
         return TenantInvitation::query()
@@ -88,7 +92,10 @@ class TenancyService
                 'current_tenant_id' => $tenant->id,
             ])->save();
 
-            return $tenant->refresh();
+            $tenant = $tenant->refresh();
+            $this->auditLog->tenantCreated($user, $tenant);
+
+            return $tenant;
         });
     }
 
@@ -115,11 +122,16 @@ class TenancyService
             throw new AuthorizationException('You do not belong to this tenant.');
         }
 
+        $previousTenantId = $user->current_tenant_id;
+
         $user->forceFill([
             'current_tenant_id' => $tenant->id,
         ])->save();
 
-        return $tenant->refresh();
+        $tenant = $tenant->refresh();
+        $this->auditLog->tenantSwitched($user, $tenant, $previousTenantId);
+
+        return $tenant;
     }
 
     public function assignUserToTenant(Tenant $tenant, User $user, string $role = 'member'): void
@@ -163,6 +175,7 @@ class TenancyService
         }
 
         $this->assignUserToTenant($tenant, $member, $role);
+        $this->auditLog->memberAdded($actor, $tenant, $member, $role);
 
         return $tenant->users()->findOrFail($member->id);
     }
@@ -190,11 +203,16 @@ class TenancyService
             ]);
         }
 
+        $previousRole = $member->tenantMembershipRole($tenant);
+
         $tenant->users()->updateExistingPivot($member->id, [
             'role' => $role,
         ]);
 
-        return $tenant->users()->findOrFail($member->id);
+        $member = $tenant->users()->findOrFail($member->id);
+        $this->auditLog->memberRoleUpdated($actor, $tenant, $member, $previousRole, $role);
+
+        return $member;
     }
 
     public function removeMember(User $actor, User $member): void
@@ -219,18 +237,24 @@ class TenancyService
             ]);
         }
 
-        DB::transaction(function () use ($tenant, $member): void {
-            $tenant->users()->detach($member->id);
+        DB::transaction(function () use ($actor, $tenant, $member): void {
+            $nextTenantId = null;
 
             if ($member->current_tenant_id === $tenant->id) {
                 $nextTenantId = $member->tenants()
                     ->whereKeyNot($tenant->id)
                     ->value('tenants.id');
+            }
 
+            $tenant->users()->detach($member->id);
+
+            if ($member->current_tenant_id === $tenant->id) {
                 $member->forceFill([
                     'current_tenant_id' => $nextTenantId,
                 ])->save();
             }
+
+            $this->auditLog->memberRemoved($actor, $tenant, $member, $nextTenantId);
         });
     }
 
@@ -286,6 +310,8 @@ class TenancyService
         ]);
 
         $this->sendInvitationNotification($invitation);
+        $invitation->loadMissing('tenant');
+        $this->auditLog->invitationCreated($actor, $invitation);
 
         return $invitation->refresh();
     }
@@ -322,7 +348,11 @@ class TenancyService
                 'current_tenant_id' => $tenant->id,
             ])->save();
 
-            return $invitation->refresh();
+            $invitation = $invitation->refresh();
+            $invitation->setRelation('tenant', $tenant);
+            $this->auditLog->invitationAccepted($user, $invitation);
+
+            return $invitation;
         });
     }
 
@@ -345,6 +375,8 @@ class TenancyService
         $invitation->forceFill([
             'revoked_at' => now(),
         ])->save();
+        $invitation->loadMissing('tenant');
+        $this->auditLog->invitationRevoked($actor, $invitation);
     }
 
     public function resendInvitation(User $actor, TenantInvitation $invitation): TenantInvitation
@@ -364,6 +396,8 @@ class TenancyService
         }
 
         $this->sendInvitationNotification($invitation);
+        $invitation->loadMissing('tenant');
+        $this->auditLog->invitationResent($actor, $invitation);
 
         return $invitation->refresh();
     }
