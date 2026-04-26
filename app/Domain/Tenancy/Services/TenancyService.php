@@ -3,6 +3,7 @@
 namespace App\Domain\Tenancy\Services;
 
 use App\Models\Tenant;
+use App\Models\TenantInvitation;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
@@ -208,6 +209,115 @@ class TenancyService
                 ])->save();
             }
         });
+    }
+
+    /**
+     * @return Collection<int, TenantInvitation>
+     */
+    public function invitationsForTenant(Tenant $tenant): Collection
+    {
+        return $tenant->invitations()
+            ->latest()
+            ->get();
+    }
+
+    public function createInvitation(User $actor, string $email, string $role, ?int $expiresInHours = null): TenantInvitation
+    {
+        $tenant = $actor->currentTenantOrFail();
+        $this->assertValidMembershipRole($role);
+
+        if ($tenant->users()->where('users.email', $email)->exists()) {
+            throw ValidationException::withMessages([
+                'email' => ['This user already belongs to the current tenant.'],
+            ]);
+        }
+
+        $existingPendingInvitation = $tenant->invitations()
+            ->where('email', $email)
+            ->whereNull('accepted_at')
+            ->whereNull('revoked_at')
+            ->when(
+                true,
+                fn ($query) => $query->where(function ($query): void {
+                    $query->whereNull('expires_at')
+                        ->orWhere('expires_at', '>', now());
+                }),
+            )
+            ->exists();
+
+        if ($existingPendingInvitation) {
+            throw ValidationException::withMessages([
+                'email' => ['A pending invitation already exists for this email address.'],
+            ]);
+        }
+
+        return TenantInvitation::query()->create([
+            'tenant_id' => $tenant->id,
+            'email' => $email,
+            'role' => $role,
+            'token' => (string) Str::uuid(),
+            'invited_by_user_id' => $actor->id,
+            'expires_at' => $expiresInHours !== null ? now()->addHours($expiresInHours) : now()->addDays(7),
+        ]);
+    }
+
+    public function acceptInvitation(User $user, string $token): TenantInvitation
+    {
+        $invitation = TenantInvitation::query()
+            ->where('token', $token)
+            ->first();
+
+        if ($invitation === null || ! $invitation->isPending()) {
+            throw ValidationException::withMessages([
+                'token' => ['The tenant invitation is invalid or no longer available.'],
+            ]);
+        }
+
+        if (strtolower($invitation->email) !== strtolower($user->email)) {
+            throw ValidationException::withMessages([
+                'email' => ['This invitation does not belong to the authenticated user.'],
+            ]);
+        }
+
+        return DB::transaction(function () use ($user, $invitation) {
+            $tenant = $invitation->tenant()->firstOrFail();
+
+            if (! $tenant->users()->whereKey($user->id)->exists()) {
+                $this->assignUserToTenant($tenant, $user, $invitation->role);
+            }
+
+            $invitation->forceFill([
+                'accepted_by_user_id' => $user->id,
+                'accepted_at' => now(),
+            ])->save();
+
+            $user->forceFill([
+                'current_tenant_id' => $tenant->id,
+            ])->save();
+
+            return $invitation->refresh();
+        });
+    }
+
+    public function revokeInvitation(User $actor, TenantInvitation $invitation): void
+    {
+        $tenant = $actor->currentTenantOrFail();
+
+        if ((int) $invitation->tenant_id !== (int) $tenant->id) {
+            throw ValidationException::withMessages([
+                'tenant_invitation' => ['The selected tenant invitation is invalid.'],
+            ]);
+        }
+
+        if (! $invitation->isPending()) {
+            throw ValidationException::withMessages([
+                'tenant_invitation' => ['Only pending invitations can be revoked.'],
+            ]);
+        }
+
+        $invitation->forceFill([
+            'revoked_at' => now(),
+        ])->save();
     }
 
     protected function assertValidMembershipRole(string $role): void

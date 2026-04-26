@@ -53,4 +53,22 @@ class TenantPolicy
         return $user->tenants()->whereKey($tenant->id)->exists()
             && $user->hasTenantPermission('delete users', $tenant);
     }
+
+    public function viewInvitations(User $user, Tenant $tenant): bool
+    {
+        return $user->tenants()->whereKey($tenant->id)->exists()
+            && $user->hasTenantPermission('view users', $tenant);
+    }
+
+    public function inviteMember(User $user, Tenant $tenant): bool
+    {
+        return $user->tenants()->whereKey($tenant->id)->exists()
+            && $user->hasTenantPermission('create users', $tenant);
+    }
+
+    public function revokeInvitation(User $user, Tenant $tenant): bool
+    {
+        return $user->tenants()->whereKey($tenant->id)->exists()
+            && $user->hasTenantPermission('delete users', $tenant);
+    }
 }

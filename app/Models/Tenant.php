@@ -40,4 +40,12 @@ class Tenant extends Model
     {
         return $this->hasMany(DiscordIntegration::class);
     }
+
+    /**
+     * @return HasMany<TenantInvitation, $this>
+     */
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(TenantInvitation::class);
+    }
 }

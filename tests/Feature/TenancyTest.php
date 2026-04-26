@@ -271,3 +271,99 @@ it('prevents removing the current tenant owner', function (): void {
     ])->assertStatus(422)
         ->assertJsonValidationErrors(['user']);
 });
+
+it('creates and lists tenant invitations', function (): void {
+    $owner = User::factory()->create();
+    $service = app(TenancyService::class);
+    $service->ensurePersonalTenant($owner);
+    $token = $owner->createToken('tenant-invite')->plainTextToken;
+
+    postJson('/api/v1/tenants/current/invitations', [
+        'email' => 'invitee@example.com',
+        'role' => 'support',
+        'expires_in_hours' => 24,
+    ], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertCreated()
+        ->assertJsonPath('data.email', 'invitee@example.com')
+        ->assertJsonPath('data.role', 'support')
+        ->assertJsonPath('data.is_pending', true)
+        ->assertJsonPath('meta.message', 'Tenant invitation created successfully.');
+
+    getJson('/api/v1/tenants/current/invitations', [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.email', 'invitee@example.com')
+        ->assertJsonPath('data.0.role', 'support');
+});
+
+it('accepts a tenant invitation for the authenticated user', function (): void {
+    $owner = User::factory()->create();
+    $invitee = User::factory()->create([
+        'email' => 'invitee@example.com',
+    ]);
+    $service = app(TenancyService::class);
+    $tenant = $service->ensurePersonalTenant($owner);
+    $invitation = $service->createInvitation($owner, $invitee->email, 'support', 24);
+    $token = $invitee->createToken('tenant-accept')->plainTextToken;
+
+    postJson('/api/v1/tenants/invitations/' . $invitation->token . '/accept', [], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertOk()
+        ->assertJsonPath('data.email', $invitee->email)
+        ->assertJsonPath('data.accepted_at', fn (?string $value): bool => is_string($value) && $value !== '')
+        ->assertJsonPath('meta.message', 'Tenant invitation accepted successfully.');
+
+    expect($invitee->fresh()->current_tenant_id)->toBe($tenant->id);
+    expect($tenant->users()->whereKey($invitee->id)->exists())->toBeTrue();
+    expect($invitee->fresh()->tenantMembershipRole($tenant))->toBe('support');
+});
+
+it('rejects accepting a tenant invitation for another email address', function (): void {
+    $owner = User::factory()->create();
+    $wrongUser = User::factory()->create([
+        'email' => 'wrong@example.com',
+    ]);
+    $service = app(TenancyService::class);
+    $service->ensurePersonalTenant($owner);
+    $invitation = $service->createInvitation($owner, 'invitee@example.com', 'support', 24);
+    $token = $wrongUser->createToken('tenant-accept')->plainTextToken;
+
+    postJson('/api/v1/tenants/invitations/' . $invitation->token . '/accept', [], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertStatus(422)
+        ->assertJsonValidationErrors(['email']);
+});
+
+it('revokes a pending tenant invitation', function (): void {
+    $owner = User::factory()->create();
+    $service = app(TenancyService::class);
+    $service->ensurePersonalTenant($owner);
+    $invitation = $service->createInvitation($owner, 'invitee@example.com', 'support', 24);
+    $token = $owner->createToken('tenant-revoke')->plainTextToken;
+
+    deleteJson('/api/v1/tenants/current/invitations/' . $invitation->id, [], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertOk()
+        ->assertJsonPath('meta.message', 'Tenant invitation revoked successfully.');
+
+    expect($invitation->fresh()?->revoked_at)->not->toBeNull();
+});
+
+it('prevents accepting a revoked tenant invitation', function (): void {
+    $owner = User::factory()->create();
+    $invitee = User::factory()->create([
+        'email' => 'invitee@example.com',
+    ]);
+    $service = app(TenancyService::class);
+    $service->ensurePersonalTenant($owner);
+    $invitation = $service->createInvitation($owner, $invitee->email, 'support', 24);
+    $service->revokeInvitation($owner, $invitation);
+    $token = $invitee->createToken('tenant-accept')->plainTextToken;
+
+    postJson('/api/v1/tenants/invitations/' . $invitation->token . '/accept', [], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertStatus(422)
+        ->assertJsonValidationErrors(['token']);
+});

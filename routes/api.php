@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DiscordAuthController;
 use App\Http\Controllers\Api\V1\DiscordIntegrationController;
 use App\Http\Controllers\Api\V1\TenantController;
+use App\Http\Controllers\Api\V1\TenantInvitationController;
 use App\Http\Controllers\Api\V1\TenantMemberController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +29,10 @@ Route::prefix('v1')
             Route::post('/tenants/current/members', [TenantMemberController::class, 'store'])->name('tenants.members.store');
             Route::patch('/tenants/current/members/{user}', [TenantMemberController::class, 'update'])->name('tenants.members.update');
             Route::delete('/tenants/current/members/{user}', [TenantMemberController::class, 'destroy'])->name('tenants.members.destroy');
+            Route::get('/tenants/current/invitations', [TenantInvitationController::class, 'index'])->name('tenants.invitations.index');
+            Route::post('/tenants/current/invitations', [TenantInvitationController::class, 'store'])->name('tenants.invitations.store');
+            Route::post('/tenants/invitations/{token}/accept', [TenantInvitationController::class, 'accept'])->name('tenants.invitations.accept');
+            Route::delete('/tenants/current/invitations/{tenantInvitation}', [TenantInvitationController::class, 'destroy'])->name('tenants.invitations.destroy');
             Route::get('/discord/integration', [DiscordIntegrationController::class, 'show'])->name('discord.integration.show');
             Route::put('/discord/integration', [DiscordIntegrationController::class, 'upsert'])->name('discord.integration.upsert');
             Route::patch('/discord/integration/credentials', [DiscordIntegrationController::class, 'updateCredentials'])->name('discord.integration.credentials.update');
