@@ -18,7 +18,7 @@ class CheckRole
     {
         $user = Auth::user();
 
-        if (! $user || ! $user->hasRole($role)) {
+        if (! $user || ! $user->hasTenantRole($role)) {
             return response()->json([
                 'message' => 'Forbidden',
                 'code' => 'authorization_denied',

@@ -12,26 +12,26 @@ class PermissionPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('view permissions');
+        return $user->hasTenantPermission('view permissions');
     }
 
     public function view(User $user, Permission $permission): bool
     {
-        return $user->hasPermissionTo('view permissions');
+        return $user->hasTenantPermission('view permissions');
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('create permissions');
+        return $user->hasTenantPermission('create permissions');
     }
 
     public function update(User $user, Permission $permission): bool
     {
-        return $user->hasPermissionTo('edit permissions');
+        return $user->hasTenantPermission('edit permissions');
     }
 
     public function delete(User $user, Permission $permission): bool
     {
-        return $user->hasPermissionTo('delete permissions');
+        return $user->hasTenantPermission('delete permissions');
     }
 }

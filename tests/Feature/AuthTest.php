@@ -51,6 +51,8 @@ it('successfully registers a new user', function (): void {
     expect($user?->current_tenant_id)->not->toBeNull();
     expect(Tenant::query()->where('owner_user_id', $user?->id)->exists())->toBeTrue();
     $response->assertJsonPath('data.user.current_tenant.owner_user_id', $user?->id);
+    $response->assertJsonPath('data.user.current_tenant.membership_role', 'owner');
+    $response->assertJsonPath('data.user.current_tenant.permissions.0', 'view permissions');
 });
 
 it('validates required fields on registration', function (): void {
@@ -178,7 +180,8 @@ it('returns authenticated user information', function (): void {
                 'email' => $user->email,
             ],
         ])
-        ->assertJsonPath('data.current_tenant.id', $user->currentTenantOrFail()->id);
+        ->assertJsonPath('data.current_tenant.id', $user->currentTenantOrFail()->id)
+        ->assertJsonPath('data.current_tenant.membership_role', 'owner');
 });
 
 it('fails me without authentication', function (): void {

@@ -21,6 +21,9 @@ class TenantResource extends JsonResource
             'slug' => $this->resource->slug,
             'owner_user_id' => $this->resource->owner_user_id,
             'membership_role' => $membershipRole,
+            'permissions' => is_string($membershipRole)
+                ? config('tenancy.membership_roles.' . $membershipRole, [])
+                : [],
             'is_current' => $currentTenantId !== null && $currentTenantId === $this->resource->id,
             'created_at' => $this->resource->created_at?->toISOString(),
             'updated_at' => $this->resource->updated_at?->toISOString(),

@@ -97,6 +97,15 @@ class TenancyService
         return $tenant->refresh();
     }
 
+    public function assignUserToTenant(Tenant $tenant, User $user, string $role = 'member'): void
+    {
+        $tenant->users()->syncWithoutDetaching([
+            $user->id => [
+                'role' => $role,
+            ],
+        ]);
+    }
+
     protected function uniqueSlug(string $name): string
     {
         $baseSlug = Str::slug($name);

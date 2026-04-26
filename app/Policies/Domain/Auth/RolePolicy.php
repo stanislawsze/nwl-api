@@ -12,26 +12,26 @@ class RolePolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('view roles');
+        return $user->hasTenantPermission('view roles');
     }
 
     public function view(User $user, Role $role): bool
     {
-        return $user->hasPermissionTo('view roles');
+        return $user->hasTenantPermission('view roles');
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('create roles');
+        return $user->hasTenantPermission('create roles');
     }
 
     public function update(User $user, Role $role): bool
     {
-        return $user->hasPermissionTo('edit roles');
+        return $user->hasTenantPermission('edit roles');
     }
 
     public function delete(User $user, Role $role): bool
     {
-        return $user->hasPermissionTo('delete roles');
+        return $user->hasTenantPermission('delete roles');
     }
 }

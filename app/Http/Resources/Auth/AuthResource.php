@@ -26,6 +26,11 @@ class AuthResource extends JsonResource
                     'name' => $this->resource->currentTenant->name,
                     'slug' => $this->resource->currentTenant->slug,
                     'owner_user_id' => $this->resource->currentTenant->owner_user_id,
+                    'membership_role' => $this->resource->currentTenantMembershipRole(),
+                    'permissions' => config(
+                        'tenancy.membership_roles.' . ($this->resource->currentTenantMembershipRole() ?? 'member'),
+                        [],
+                    ),
                 ];
             }),
             'email_verified_at' => $this->resource->email_verified_at?->toISOString(),

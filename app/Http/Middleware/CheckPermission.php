@@ -18,7 +18,7 @@ class CheckPermission
     {
         $user = Auth::user();
 
-        if (! $user || ! $user->hasPermissionTo($permission)) {
+        if (! $user || ! $user->hasTenantPermission($permission)) {
             return response()->json([
                 'message' => 'Forbidden',
                 'code' => 'authorization_denied',
