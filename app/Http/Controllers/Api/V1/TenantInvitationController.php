@@ -49,6 +49,21 @@ class TenantInvitationController extends Controller
         ], 201);
     }
 
+    public function resend(Request $request, TenantInvitation $tenantInvitation): JsonResponse
+    {
+        $tenant = $request->user()->currentTenantOrFail();
+        $this->authorize('resendInvitation', $tenant);
+
+        $invitation = $this->tenancyService->resendInvitation($request->user(), $tenantInvitation);
+
+        return response()->json([
+            'data' => new TenantInvitationResource($invitation),
+            'meta' => [
+                'message' => 'Tenant invitation resent successfully.',
+            ],
+        ]);
+    }
+
     public function accept(Request $request, string $token): JsonResponse
     {
         $invitation = $this->tenancyService->acceptInvitation($request->user(), $token);

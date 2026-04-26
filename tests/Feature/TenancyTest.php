@@ -5,6 +5,7 @@ use App\Models\DiscordIntegration;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 
 use function Pest\Laravel\deleteJson;
@@ -14,6 +15,10 @@ use function Pest\Laravel\postJson;
 use function Pest\Laravel\putJson;
 
 uses(RefreshDatabase::class);
+
+beforeEach(function (): void {
+    Notification::fake();
+});
 
 it('creates a personal tenant when a user registers', function (): void {
     $user = User::factory()->create([
@@ -288,6 +293,8 @@ it('creates and lists tenant invitations', function (): void {
         ->assertJsonPath('data.email', 'invitee@example.com')
         ->assertJsonPath('data.role', 'support')
         ->assertJsonPath('data.is_pending', true)
+        ->assertJsonPath('data.send_count', 1)
+        ->assertJsonPath('data.last_sent_at', fn (?string $value): bool => is_string($value) && $value !== '')
         ->assertJsonPath('meta.message', 'Tenant invitation created successfully.');
 
     getJson('/api/v1/tenants/current/invitations', [
@@ -296,6 +303,27 @@ it('creates and lists tenant invitations', function (): void {
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.email', 'invitee@example.com')
         ->assertJsonPath('data.0.role', 'support');
+
+    Notification::assertCount(1);
+});
+
+it('resends a pending tenant invitation', function (): void {
+    $owner = User::factory()->create();
+    $service = app(TenancyService::class);
+    $service->ensurePersonalTenant($owner);
+    $invitation = $service->createInvitation($owner, 'invitee@example.com', 'support', 24);
+    $token = $owner->createToken('tenant-resend')->plainTextToken;
+
+    postJson('/api/v1/tenants/current/invitations/' . $invitation->id . '/resend', [], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertOk()
+        ->assertJsonPath('data.email', 'invitee@example.com')
+        ->assertJsonPath('data.send_count', 2)
+        ->assertJsonPath('meta.message', 'Tenant invitation resent successfully.');
+
+    expect($invitation->fresh()?->send_count)->toBe(2);
+    expect($invitation->fresh()?->last_sent_at)->not->toBeNull();
+    Notification::assertCount(2);
 });
 
 it('accepts a tenant invitation for the authenticated user', function (): void {

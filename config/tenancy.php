@@ -32,4 +32,8 @@ return [
         ],
         'member' => [],
     ],
+    'invitations' => [
+        'default_expiration_hours' => 168,
+        'accept_url' => env('TENANCY_INVITATION_ACCEPT_URL', rtrim((string) env('APP_URL', 'http://localhost'), '/') . '/invitations/{token}'),
+    ],
 ];

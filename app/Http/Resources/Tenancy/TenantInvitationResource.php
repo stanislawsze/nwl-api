@@ -20,6 +20,8 @@ class TenantInvitationResource extends JsonResource
             'permissions' => config('tenancy.membership_roles.' . $this->resource->role, []),
             'token' => $this->resource->token,
             'is_pending' => $this->resource->isPending(),
+            'last_sent_at' => $this->resource->last_sent_at?->toISOString(),
+            'send_count' => $this->resource->send_count,
             'accepted_at' => $this->resource->accepted_at?->toISOString(),
             'revoked_at' => $this->resource->revoked_at?->toISOString(),
             'expires_at' => $this->resource->expires_at?->toISOString(),

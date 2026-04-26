@@ -17,6 +17,8 @@ use Illuminate\Support\Carbon;
     'accepted_at',
     'revoked_at',
     'expires_at',
+    'last_sent_at',
+    'send_count',
 ])]
 class TenantInvitation extends Model
 {
@@ -26,6 +28,7 @@ class TenantInvitation extends Model
             'accepted_at' => 'datetime',
             'revoked_at' => 'datetime',
             'expires_at' => 'datetime',
+            'last_sent_at' => 'datetime',
         ];
     }
 

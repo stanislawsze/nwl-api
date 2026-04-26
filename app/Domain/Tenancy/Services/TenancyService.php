@@ -5,9 +5,11 @@ namespace App\Domain\Tenancy\Services;
 use App\Models\Tenant;
 use App\Models\TenantInvitation;
 use App\Models\User;
+use App\Notifications\Tenancy\TenantInvitationNotification;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -251,14 +253,20 @@ class TenancyService
             ]);
         }
 
-        return TenantInvitation::query()->create([
+        $invitation = TenantInvitation::query()->create([
             'tenant_id' => $tenant->id,
             'email' => $email,
             'role' => $role,
             'token' => (string) Str::uuid(),
             'invited_by_user_id' => $actor->id,
-            'expires_at' => $expiresInHours !== null ? now()->addHours($expiresInHours) : now()->addDays(7),
+            'expires_at' => $expiresInHours !== null
+                ? now()->addHours($expiresInHours)
+                : now()->addHours((int) config('tenancy.invitations.default_expiration_hours', 168)),
         ]);
+
+        $this->sendInvitationNotification($invitation);
+
+        return $invitation->refresh();
     }
 
     public function acceptInvitation(User $user, string $token): TenantInvitation
@@ -320,6 +328,27 @@ class TenancyService
         ])->save();
     }
 
+    public function resendInvitation(User $actor, TenantInvitation $invitation): TenantInvitation
+    {
+        $tenant = $actor->currentTenantOrFail();
+
+        if ((int) $invitation->tenant_id !== (int) $tenant->id) {
+            throw ValidationException::withMessages([
+                'tenant_invitation' => ['The selected tenant invitation is invalid.'],
+            ]);
+        }
+
+        if (! $invitation->isPending()) {
+            throw ValidationException::withMessages([
+                'tenant_invitation' => ['Only pending invitations can be resent.'],
+            ]);
+        }
+
+        $this->sendInvitationNotification($invitation);
+
+        return $invitation->refresh();
+    }
+
     protected function assertValidMembershipRole(string $role): void
     {
         if (array_key_exists($role, config('tenancy.membership_roles', []))) {
@@ -329,6 +358,17 @@ class TenancyService
         throw ValidationException::withMessages([
             'role' => ['The selected tenant role is invalid.'],
         ]);
+    }
+
+    protected function sendInvitationNotification(TenantInvitation $invitation): void
+    {
+        Notification::route('mail', $invitation->email)
+            ->notify(new TenantInvitationNotification($invitation));
+
+        $invitation->forceFill([
+            'last_sent_at' => now(),
+            'send_count' => $invitation->send_count + 1,
+        ])->save();
     }
 
     protected function uniqueSlug(string $name): string

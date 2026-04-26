@@ -31,6 +31,7 @@ Route::prefix('v1')
             Route::delete('/tenants/current/members/{user}', [TenantMemberController::class, 'destroy'])->name('tenants.members.destroy');
             Route::get('/tenants/current/invitations', [TenantInvitationController::class, 'index'])->name('tenants.invitations.index');
             Route::post('/tenants/current/invitations', [TenantInvitationController::class, 'store'])->name('tenants.invitations.store');
+            Route::post('/tenants/current/invitations/{tenantInvitation}/resend', [TenantInvitationController::class, 'resend'])->name('tenants.invitations.resend');
             Route::post('/tenants/invitations/{token}/accept', [TenantInvitationController::class, 'accept'])->name('tenants.invitations.accept');
             Route::delete('/tenants/current/invitations/{tenantInvitation}', [TenantInvitationController::class, 'destroy'])->name('tenants.invitations.destroy');
             Route::get('/discord/integration', [DiscordIntegrationController::class, 'show'])->name('discord.integration.show');
