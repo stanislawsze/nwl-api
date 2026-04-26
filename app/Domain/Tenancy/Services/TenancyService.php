@@ -15,6 +15,27 @@ use Illuminate\Validation\ValidationException;
 
 class TenancyService
 {
+    public function invitationByToken(string $token): ?TenantInvitation
+    {
+        return TenantInvitation::query()
+            ->with('tenant')
+            ->where('token', $token)
+            ->first();
+    }
+
+    public function invitationByTokenOrFail(string $token): TenantInvitation
+    {
+        $invitation = $this->invitationByToken($token);
+
+        if ($invitation === null) {
+            throw ValidationException::withMessages([
+                'token' => ['The tenant invitation is invalid or no longer available.'],
+            ]);
+        }
+
+        return $invitation;
+    }
+
     public function ensurePersonalTenant(User $user): Tenant
     {
         if ($user->currentTenant !== null) {
@@ -271,9 +292,7 @@ class TenancyService
 
     public function acceptInvitation(User $user, string $token): TenantInvitation
     {
-        $invitation = TenantInvitation::query()
-            ->where('token', $token)
-            ->first();
+        $invitation = $this->invitationByToken($token);
 
         if ($invitation === null || ! $invitation->isPending()) {
             throw ValidationException::withMessages([

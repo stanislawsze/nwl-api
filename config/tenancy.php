@@ -35,5 +35,7 @@ return [
     'invitations' => [
         'default_expiration_hours' => 168,
         'accept_url' => env('TENANCY_INVITATION_ACCEPT_URL', rtrim((string) env('APP_URL', 'http://localhost'), '/') . '/invitations/{token}'),
+        'login_url' => env('TENANCY_INVITATION_LOGIN_URL', rtrim((string) env('APP_URL', 'http://localhost'), '/') . '/login'),
+        'register_url' => env('TENANCY_INVITATION_REGISTER_URL', rtrim((string) env('APP_URL', 'http://localhost'), '/') . '/register'),
     ],
 ];

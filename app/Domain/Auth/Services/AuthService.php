@@ -14,6 +14,7 @@ use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Hashing\HashManager;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -29,20 +30,25 @@ class AuthService
     public function register(RegisterUserDTO $dto): AuthenticatedUserDTO
     {
         return DB::transaction(function () use ($dto) {
-            $user = User::create([
-                'name' => $dto->name,
-                'email' => $dto->email,
-                'password' => $this->hash->make($dto->password),
-            ]);
+            $user = $this->createUser($dto);
 
-            $role = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
-            $user->assignRole($role);
+            return $this->buildAuthenticatedUserDTO($user);
+        });
+    }
 
-            $this->assignDefaultPermissions($user);
-            $this->tenancyService->ensurePersonalTenant($user);
+    public function registerFromInvitation(RegisterUserDTO $dto, string $token): AuthenticatedUserDTO
+    {
+        return DB::transaction(function () use ($dto, $token) {
+            if (User::query()->where('email', $dto->email)->exists()) {
+                throw ValidationException::withMessages([
+                    'email' => ['An account already exists for this invitation email. Please sign in and accept the invitation.'],
+                ]);
+            }
 
-            event(new UserRegistered($user));
-            event(new UserAuthenticated($user, 'password'));
+            $user = $this->createUser($dto);
+            $this->tenancyService->acceptInvitation($user, $token);
+
+            $user->loadMissing('currentTenant');
 
             return $this->buildAuthenticatedUserDTO($user);
         });
@@ -126,5 +132,25 @@ class AuthService
         }
 
         return $guard;
+    }
+
+    protected function createUser(RegisterUserDTO $dto): User
+    {
+        $user = User::query()->create([
+            'name' => $dto->name,
+            'email' => $dto->email,
+            'password' => $this->hash->make($dto->password),
+        ]);
+
+        $role = Role::firstOrCreate(['name' => 'user', 'guard_name' => 'web']);
+        $user->assignRole($role);
+
+        $this->assignDefaultPermissions($user);
+        $this->tenancyService->ensurePersonalTenant($user);
+
+        event(new UserRegistered($user));
+        event(new UserAuthenticated($user, 'password'));
+
+        return $user;
     }
 }
