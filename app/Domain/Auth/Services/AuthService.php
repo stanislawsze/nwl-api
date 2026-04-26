@@ -57,6 +57,7 @@ class AuthService
         }
 
         $user = $guard->user();
+        $this->tenancyService->ensurePersonalTenant($user);
         event(new UserAuthenticated($user, 'password'));
 
         return $this->buildAuthenticatedUserDTO($user);

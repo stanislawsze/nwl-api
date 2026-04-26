@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
 use function Pest\Laravel\getJson;
+use function Pest\Laravel\postJson;
 use function Pest\Laravel\putJson;
 
 uses(RefreshDatabase::class);
@@ -91,4 +92,83 @@ it('prevents cross-tenant updates to a discord integration', function (): void {
     ])->assertOk();
 
     expect($integration->fresh()->guild_id)->toBe('guild-owner');
+});
+
+it('lists the authenticated user tenants and marks the current one', function (): void {
+    $user = User::factory()->create([
+        'name' => 'Zed User',
+    ]);
+    $service = app(TenancyService::class);
+    $personalTenant = $service->ensurePersonalTenant($user);
+    $secondTenant = $service->createTenant($user, 'Operations Workspace');
+    $service->switchTenant($user, $personalTenant);
+
+    $token = $user->createToken('tenant-list')->plainTextToken;
+
+    getJson('/api/v1/tenants', [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('data.0.membership_role', 'owner')
+        ->assertJsonPath('data.0.is_current', false)
+        ->assertJsonPath('data.1.is_current', true);
+
+    expect($secondTenant->id)->not->toBe($personalTenant->id);
+});
+
+it('creates a new tenant and switches the current context to it', function (): void {
+    $user = User::factory()->create();
+    app(TenancyService::class)->ensurePersonalTenant($user);
+    $token = $user->createToken('tenant-create')->plainTextToken;
+
+    postJson('/api/v1/tenants', [
+        'name' => 'Moderation Team',
+    ], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertCreated()
+        ->assertJsonPath('data.name', 'Moderation Team')
+        ->assertJsonPath('data.membership_role', 'owner')
+        ->assertJsonPath('meta.message', 'Tenant created successfully.');
+
+    $user->refresh();
+    $tenant = Tenant::query()->where('name', 'Moderation Team')->firstOrFail();
+
+    expect($user->current_tenant_id)->toBe($tenant->id);
+    expect($user->tenants()->whereKey($tenant->id)->exists())->toBeTrue();
+});
+
+it('switches to another tenant the user belongs to', function (): void {
+    $user = User::factory()->create();
+    $service = app(TenancyService::class);
+    $originalTenant = $service->ensurePersonalTenant($user);
+    $secondTenant = $service->createTenant($user, 'Support Workspace');
+    $token = $user->createToken('tenant-switch')->plainTextToken;
+
+    postJson('/api/v1/tenants/' . $originalTenant->id . '/switch', [], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertOk()
+        ->assertJsonPath('data.id', $originalTenant->id)
+        ->assertJsonPath('data.is_current', true)
+        ->assertJsonPath('meta.message', 'Tenant switched successfully.');
+
+    expect($secondTenant->id)->not->toBe($originalTenant->id);
+    expect($user->fresh()->current_tenant_id)->toBe($originalTenant->id);
+});
+
+it('forbids switching to a tenant the user does not belong to', function (): void {
+    $user = User::factory()->create();
+    $other = User::factory()->create();
+    $service = app(TenancyService::class);
+    $service->ensurePersonalTenant($user);
+    $otherTenant = $service->ensurePersonalTenant($other);
+    $token = $user->createToken('tenant-switch')->plainTextToken;
+
+    postJson('/api/v1/tenants/' . $otherTenant->id . '/switch', [], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertForbidden()
+        ->assertJson([
+            'message' => 'Forbidden',
+            'code' => 'authorization_denied',
+            'errors' => [],
+        ]);
 });

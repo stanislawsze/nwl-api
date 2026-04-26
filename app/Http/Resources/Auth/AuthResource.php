@@ -16,6 +16,18 @@ class AuthResource extends JsonResource
             'id' => $this->resource->id,
             'name' => $this->resource->name,
             'email' => $this->resource->email,
+            'current_tenant' => $this->whenLoaded('currentTenant', function () {
+                if ($this->resource->currentTenant === null) {
+                    return null;
+                }
+
+                return [
+                    'id' => $this->resource->currentTenant->id,
+                    'name' => $this->resource->currentTenant->name,
+                    'slug' => $this->resource->currentTenant->slug,
+                    'owner_user_id' => $this->resource->currentTenant->owner_user_id,
+                ];
+            }),
             'email_verified_at' => $this->resource->email_verified_at?->toISOString(),
             'created_at' => $this->resource->created_at?->toISOString(),
             'updated_at' => $this->resource->updated_at?->toISOString(),

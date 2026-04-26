@@ -42,8 +42,10 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
+        $request->user()?->currentTenantOrFail();
+
         return response()->json([
-            'data' => new AuthResource($request->user()?->load('roles', 'permissions')),
+            'data' => new AuthResource($request->user()?->load('roles', 'permissions', 'currentTenant')),
             'meta' => [],
         ]);
     }
@@ -64,8 +66,10 @@ class AuthController extends Controller
     protected function authenticatedResponse(int $userId, string $token, int $status = 200): JsonResponse
     {
         $user = User::query()
-            ->with(['roles', 'permissions'])
+            ->with(['roles', 'permissions', 'currentTenant'])
             ->findOrFail($userId);
+        $user->currentTenantOrFail();
+        $user->load('currentTenant');
 
         return response()->json([
             'data' => [

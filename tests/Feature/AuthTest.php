@@ -29,6 +29,7 @@ it('successfully registers a new user', function (): void {
                     'id',
                     'name',
                     'email',
+                    'current_tenant',
                     'email_verified_at',
                     'created_at',
                     'updated_at',
@@ -40,7 +41,8 @@ it('successfully registers a new user', function (): void {
             'meta' => [
                 'token_type',
             ],
-        ]);
+        ])
+        ->assertJsonPath('data.user.current_tenant.owner_user_id', fn (int $ownerUserId): bool => $ownerUserId > 0);
 
     $user = User::where('email', 'test@example.com')->first();
 
@@ -48,6 +50,7 @@ it('successfully registers a new user', function (): void {
     expect($user?->hasRole('user'))->toBeTrue();
     expect($user?->current_tenant_id)->not->toBeNull();
     expect(Tenant::query()->where('owner_user_id', $user?->id)->exists())->toBeTrue();
+    $response->assertJsonPath('data.user.current_tenant.owner_user_id', $user?->id);
 });
 
 it('validates required fields on registration', function (): void {
@@ -92,6 +95,7 @@ it('successfully logs in a user with correct credentials', function (): void {
                     'id',
                     'name',
                     'email',
+                    'current_tenant',
                     'roles',
                     'permissions',
                 ],
@@ -162,6 +166,7 @@ it('returns authenticated user information', function (): void {
                 'id',
                 'name',
                 'email',
+                'current_tenant',
                 'roles',
                 'permissions',
             ],
@@ -172,7 +177,8 @@ it('returns authenticated user information', function (): void {
                 'name' => $user->name,
                 'email' => $user->email,
             ],
-        ]);
+        ])
+        ->assertJsonPath('data.current_tenant.id', $user->currentTenantOrFail()->id);
 });
 
 it('fails me without authentication', function (): void {

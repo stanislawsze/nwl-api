@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DiscordAuthController;
 use App\Http\Controllers\Api\V1\DiscordIntegrationController;
+use App\Http\Controllers\Api\V1\TenantController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')
@@ -19,6 +20,9 @@ Route::prefix('v1')
             Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
             Route::get('/me', [AuthController::class, 'me'])->name('auth.me');
             Route::post('/refresh', [AuthController::class, 'refresh'])->name('auth.refresh');
+            Route::get('/tenants', [TenantController::class, 'index'])->name('tenants.index');
+            Route::post('/tenants', [TenantController::class, 'store'])->name('tenants.store');
+            Route::post('/tenants/{tenant}/switch', [TenantController::class, 'switchCurrent'])->name('tenants.switch');
             Route::get('/discord/integration', [DiscordIntegrationController::class, 'show'])->name('discord.integration.show');
             Route::put('/discord/integration', [DiscordIntegrationController::class, 'upsert'])->name('discord.integration.upsert');
             Route::patch('/discord/integration/credentials', [DiscordIntegrationController::class, 'updateCredentials'])->name('discord.integration.credentials.update');
