@@ -37,6 +37,7 @@ flowchart LR
 - Event-driven architecture
 - Queue-based async processing
 - Real-time broadcasting
+- Tenant-aware workspaces and invitation onboarding
 
 ---
 
@@ -223,6 +224,7 @@ git push
 - /docs/api (Scramble)
 - OpenAPI JSON available
 - [Repository Doc](./docs/README.md)
+- [Tenant Invitation Onboarding](./docs/tenancy-invitations.md)
 
 ---
 

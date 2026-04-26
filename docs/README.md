@@ -8,6 +8,7 @@ This directory contains the long-term technical documentation for the NWL API pr
 - [Architecture](./architecture.md)
 - [API Standards](./api-standards.md)
 - [Security](./security.md)
+- [Tenant Invitation Onboarding](./tenancy-invitations.md)
 - [FiveM Bridge](./fivem-bridge.md)
 - [Testing Strategy](./testing-strategy.md)
 - [Deployment](./deployment.md)
