@@ -26,11 +26,7 @@ class DiscordIntegrationController extends Controller
 
     public function show(Request $request): JsonResponse
     {
-        $integration = $request->user()
-            ->currentTenantOrFail()
-            ->discordIntegrations()
-            ->with(['roleMappings.localRole'])
-            ->first();
+        $integration = $this->discordIntegrationService->currentTenantIntegrationWithMappings($request->user());
 
         return response()->json([
             'data' => $integration ? new DiscordIntegrationResource($integration) : null,
@@ -79,7 +75,7 @@ class DiscordIntegrationController extends Controller
 
     public function listGuildRoles(Request $request): JsonResponse
     {
-        $integration = $request->user()->currentTenantOrFail()->discordIntegrations()->first();
+        $integration = $this->discordIntegrationService->currentTenantIntegration($request->user());
 
         if ($integration === null) {
             return response()->json([

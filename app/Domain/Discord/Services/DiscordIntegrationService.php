@@ -13,6 +13,21 @@ use Spatie\Permission\Models\Role;
 
 class DiscordIntegrationService
 {
+    public function currentTenantIntegration(User $owner): ?DiscordIntegration
+    {
+        return DiscordIntegration::query()
+            ->where('tenant_id', $owner->currentTenantOrFail()->id)
+            ->first();
+    }
+
+    public function currentTenantIntegrationWithMappings(User $owner): ?DiscordIntegration
+    {
+        return DiscordIntegration::query()
+            ->where('tenant_id', $owner->currentTenantOrFail()->id)
+            ->with(['roleMappings.localRole'])
+            ->first();
+    }
+
     /**
      * @param  array<string, mixed>  $attributes
      */
@@ -143,9 +158,7 @@ class DiscordIntegrationService
      */
     public function updateCredentials(User $owner, array $attributes): DiscordIntegration
     {
-        $integration = DiscordIntegration::query()
-            ->where('tenant_id', $owner->currentTenantOrFail()->id)
-            ->first();
+        $integration = $this->currentTenantIntegration($owner);
 
         if ($integration === null) {
             throw ValidationException::withMessages([
@@ -164,9 +177,7 @@ class DiscordIntegrationService
      */
     public function clearCredentials(User $owner, array $fields): DiscordIntegration
     {
-        $integration = DiscordIntegration::query()
-            ->where('tenant_id', $owner->currentTenantOrFail()->id)
-            ->first();
+        $integration = $this->currentTenantIntegration($owner);
 
         if ($integration === null) {
             throw ValidationException::withMessages([
