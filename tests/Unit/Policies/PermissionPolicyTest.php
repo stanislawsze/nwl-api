@@ -4,119 +4,98 @@ use App\Models\User;
 use App\Policies\Domain\Auth\PermissionPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
-use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
-describe('PermissionPolicy', function () {
-    beforeEach(function () {
-        $this->policy = new PermissionPolicy;
-
-        // Create permissions used in the policy
-        Permission::firstOrCreate(['name' => 'view permissions']);
-        Permission::firstOrCreate(['name' => 'create permissions']);
-        Permission::firstOrCreate(['name' => 'edit permissions']);
-        Permission::firstOrCreate(['name' => 'delete permissions']);
-    });
-
-    describe('viewAny()', function () {
-        it('allows user with view permissions permission', function () {
-            $user = User::factory()->create();
-            $user->givePermissionTo('view permissions');
-
-            $result = $this->policy->viewAny($user);
-
-            expect($result)->toBeTrue();
-        });
-
-        it('denies user without view permissions permission', function () {
-            $user = User::factory()->create();
-
-            $result = $this->policy->viewAny($user);
-
-            expect($result)->toBeFalse();
-        });
-    });
-
-    describe('view()', function () {
-        it('allows user with view permissions permission', function () {
-            $user = User::factory()->create();
-            $permission = Permission::create(['name' => 'test-permission']);
-            $user->givePermissionTo('view permissions');
-
-            $result = $this->policy->view($user, $permission);
-
-            expect($result)->toBeTrue();
-        });
-
-        it('denies user without view permissions permission', function () {
-            $user = User::factory()->create();
-            $permission = Permission::create(['name' => 'test-permission']);
-
-            $result = $this->policy->view($user, $permission);
-
-            expect($result)->toBeFalse();
-        });
-    });
-
-    describe('create()', function () {
-        it('allows user with create permissions permission', function () {
-            $user = User::factory()->create();
-            $user->givePermissionTo('create permissions');
-
-            $result = $this->policy->create($user);
-
-            expect($result)->toBeTrue();
-        });
-
-        it('denies user without create permissions permission', function () {
-            $user = User::factory()->create();
-
-            $result = $this->policy->create($user);
-
-            expect($result)->toBeFalse();
-        });
-    });
-
-    describe('update()', function () {
-        it('allows user with edit permissions permission', function () {
-            $user = User::factory()->create();
-            $permission = Permission::create(['name' => 'test-permission']);
-            $user->givePermissionTo('edit permissions');
-
-            $result = $this->policy->update($user, $permission);
-
-            expect($result)->toBeTrue();
-        });
-
-        it('denies user without edit permissions permission', function () {
-            $user = User::factory()->create();
-            $permission = Permission::create(['name' => 'test-permission']);
-
-            $result = $this->policy->update($user, $permission);
-
-            expect($result)->toBeFalse();
-        });
-    });
-
-    describe('delete()', function () {
-        it('allows user with delete permissions permission', function () {
-            $user = User::factory()->create();
-            $permission = Permission::create(['name' => 'test-permission']);
-            $user->givePermissionTo('delete permissions');
-
-            $result = $this->policy->delete($user, $permission);
-
-            expect($result)->toBeTrue();
-        });
-
-        it('denies user without delete permissions permission', function () {
-            $user = User::factory()->create();
-            $permission = Permission::create(['name' => 'test-permission']);
-
-            $result = $this->policy->delete($user, $permission);
-
-            expect($result)->toBeFalse();
-        });
-    });
+beforeEach(function (): void {
+    Permission::firstOrCreate(['name' => 'view permissions']);
+    Permission::firstOrCreate(['name' => 'create permissions']);
+    Permission::firstOrCreate(['name' => 'edit permissions']);
+    Permission::firstOrCreate(['name' => 'delete permissions']);
 });
+
+it('allows viewAny with view permissions permission', function (): void {
+    $user = User::factory()->create();
+    $user->givePermissionTo('view permissions');
+
+    expect(permissionPolicy()->viewAny($user))->toBeTrue();
+});
+
+it('denies viewAny without view permissions permission', function (): void {
+    $user = User::factory()->create();
+
+    expect(permissionPolicy()->viewAny($user))->toBeFalse();
+});
+
+it('allows view with view permissions permission', function (): void {
+    $user = User::factory()->create();
+    $permission = createPermission('test-permission');
+    $user->givePermissionTo('view permissions');
+
+    expect(permissionPolicy()->view($user, $permission))->toBeTrue();
+});
+
+it('denies view without view permissions permission', function (): void {
+    $user = User::factory()->create();
+    $permission = createPermission('test-permission');
+
+    expect(permissionPolicy()->view($user, $permission))->toBeFalse();
+});
+
+it('allows create with create permissions permission', function (): void {
+    $user = User::factory()->create();
+    $user->givePermissionTo('create permissions');
+
+    expect(permissionPolicy()->create($user))->toBeTrue();
+});
+
+it('denies create without create permissions permission', function (): void {
+    $user = User::factory()->create();
+
+    expect(permissionPolicy()->create($user))->toBeFalse();
+});
+
+it('allows update with edit permissions permission', function (): void {
+    $user = User::factory()->create();
+    $permission = createPermission('test-permission');
+    $user->givePermissionTo('edit permissions');
+
+    expect(permissionPolicy()->update($user, $permission))->toBeTrue();
+});
+
+it('denies update without edit permissions permission', function (): void {
+    $user = User::factory()->create();
+    $permission = createPermission('test-permission');
+
+    expect(permissionPolicy()->update($user, $permission))->toBeFalse();
+});
+
+it('allows delete with delete permissions permission', function (): void {
+    $user = User::factory()->create();
+    $permission = createPermission('test-permission');
+    $user->givePermissionTo('delete permissions');
+
+    expect(permissionPolicy()->delete($user, $permission))->toBeTrue();
+});
+
+it('denies delete without delete permissions permission', function (): void {
+    $user = User::factory()->create();
+    $permission = createPermission('test-permission');
+
+    expect(permissionPolicy()->delete($user, $permission))->toBeFalse();
+});
+
+function permissionPolicy(): PermissionPolicy
+{
+    return new PermissionPolicy;
+}
+
+function createPermission(string $name): Permission
+{
+    $permission = new Permission;
+    $permission->name = $name;
+    $permission->guard_name = 'web';
+    $permission->save();
+
+    return $permission;
+}

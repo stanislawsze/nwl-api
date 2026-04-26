@@ -1,11 +1,8 @@
 <?php
 
-use App\DTOs\Auth\AuthenticatedUserDTO;
-use App\DTOs\Auth\LoginUserDTO;
-use App\DTOs\Auth\RegisterUserDTO;
-use Tests\TestCase;
-
-uses(TestCase::class);
+use App\Domain\Auth\DTOs\AuthenticatedUserDTO;
+use App\Domain\Auth\DTOs\LoginUserDTO;
+use App\Domain\Auth\DTOs\RegisterUserDTO;
 
 describe('Authentication DTOs', function () {
 

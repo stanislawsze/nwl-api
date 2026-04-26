@@ -1,13 +1,12 @@
 <?php
 
-use App\Http\Resources\Domain\Auth\AuthResource;
+use App\Http\Resources\Auth\AuthResource;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 describe('AuthResource', function () {
     beforeEach(function () {

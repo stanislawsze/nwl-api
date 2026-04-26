@@ -21,8 +21,8 @@ class CheckPermission
         if (! $user || ! $user->hasPermissionTo($permission)) {
             return response()->json([
                 'message' => 'Forbidden',
-                'code' => 'insufficient_permissions',
-                'errors' => ['You do not have the required permission.'],
+                'code' => 'authorization_denied',
+                'errors' => [],
             ], 403);
         }
 

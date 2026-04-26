@@ -10,6 +10,7 @@ parameters:
         - bootstrap/app.php
         - config
         - routes
+        - tests
 
     tmpDir: storage/phpstan
 
@@ -28,7 +29,6 @@ parameters:
             - database/schema/*
             - database/factories/*
             - database/seeders/*
-            - tests/*
 
     universalObjectCratesClasses:
         - stdClass

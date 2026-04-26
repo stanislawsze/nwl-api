@@ -2,136 +2,100 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Domain\Auth\DTOs\LoginUserDTO;
+use App\Domain\Auth\DTOs\RegisterUserDTO;
+use App\Domain\Auth\Services\AuthService;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Domain\Auth\LoginRequest;
-use App\Http\Requests\Domain\Auth\RegisterRequest;
-use App\Http\Resources\Domain\Auth\AuthResource;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Resources\Auth\AuthResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    /**
-     * Register a new user.
-     *
-     * @return JsonResponse
-     */
-    public function register(RegisterRequest $request)
+    public function __construct(
+        protected AuthService $authService,
+    ) {}
+
+    public function register(RegisterRequest $request): JsonResponse
     {
-        $validated = $request->validated();
+        $authenticatedUser = $this->authService->register(new RegisterUserDTO(...$request->validated()));
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-        ]);
-
-        // Assign default 'user' role
-        $user->assignRole('user');
-
-        $token = $user->createToken('auth-token')->plainTextToken;
-
-        return response()->json([
-            'data' => [
-                'user' => new AuthResource($user->load('roles', 'permissions')),
-                'token' => $token,
-            ],
-            'meta' => [
-                'token_type' => 'Bearer',
-            ],
-        ], 201);
+        return $this->authenticatedResponse($authenticatedUser->userId, $authenticatedUser->token, 201);
     }
 
-    /**
-     * Login user and issue token.
-     *
-     * @return JsonResponse
-     */
-    public function login(LoginRequest $request)
+    public function login(LoginRequest $request): JsonResponse
     {
-        $validated = $request->validated();
+        $authenticatedUser = $this->authService->authenticate(new LoginUserDTO(...$request->validated()));
 
-        if (! Auth::attempt(['email' => $validated['email'], 'password' => $validated['password']])) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
-        }
-
-        $user = Auth::user();
-        $token = $user->createToken('auth-token')->plainTextToken;
-
-        return response()->json([
-            'data' => [
-                'user' => new AuthResource($user->load('roles', 'permissions')),
-                'token' => $token,
-            ],
-            'meta' => [
-                'token_type' => 'Bearer',
-            ],
-        ]);
+        return $this->authenticatedResponse($authenticatedUser->userId, $authenticatedUser->token);
     }
 
-    /**
-     * Logout user and revoke token.
-     *
-     * @return JsonResponse
-     */
-    public function logout(Request $request)
+    public function logout(Request $request): JsonResponse
     {
         $request->user()?->currentAccessToken()?->delete();
 
-        return response()->json([
-            'data' => null,
-            'meta' => [
-                'message' => 'Successfully logged out.',
-            ],
-        ]);
+        return $this->emptyResponse('Successfully logged out.');
     }
 
-    /**
-     * Get authenticated user info.
-     *
-     * @return JsonResponse
-     */
-    public function me(Request $request)
+    public function me(Request $request): JsonResponse
     {
         return response()->json([
-            'data' => new AuthResource($request->user()->load('roles', 'permissions')),
+            'data' => new AuthResource($request->user()?->load('roles', 'permissions')),
+            'meta' => [],
         ]);
     }
 
-    /**
-     * Refresh token (issue new token, revoke old one).
-     *
-     * @return JsonResponse
-     */
-    public function refresh(Request $request)
+    public function refresh(Request $request): JsonResponse
     {
         $currentToken = $request->user()?->currentAccessToken();
 
-        if (! $currentToken) {
-            return response()->json([
-                'message' => 'Unauthorized',
-                'code' => 'no_active_token',
-                'errors' => ['No active token found.'],
-            ], 401);
+        if ($currentToken === null) {
+            abort(401);
         }
 
-        $user = $request->user();
         $currentToken->delete();
 
-        $newToken = $user->createToken('auth-token')->plainTextToken;
+        return $this->tokenResponse($request->user()->createToken('auth-token')->plainTextToken);
+    }
+
+    protected function authenticatedResponse(int $userId, string $token, int $status = 200): JsonResponse
+    {
+        $user = User::query()
+            ->with(['roles', 'permissions'])
+            ->findOrFail($userId);
 
         return response()->json([
             'data' => [
-                'token' => $newToken,
+                'user' => new AuthResource($user),
+                'token' => $token,
             ],
             'meta' => [
                 'token_type' => 'Bearer',
+            ],
+        ], $status);
+    }
+
+    protected function tokenResponse(string $token): JsonResponse
+    {
+        return response()->json([
+            'data' => [
+                'token' => $token,
+            ],
+            'meta' => [
+                'token_type' => 'Bearer',
+            ],
+        ]);
+    }
+
+    protected function emptyResponse(string $message): JsonResponse
+    {
+        return response()->json([
+            'data' => null,
+            'meta' => [
+                'message' => $message,
             ],
         ]);
     }

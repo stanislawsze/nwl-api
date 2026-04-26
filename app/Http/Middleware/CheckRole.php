@@ -21,8 +21,8 @@ class CheckRole
         if (! $user || ! $user->hasRole($role)) {
             return response()->json([
                 'message' => 'Forbidden',
-                'code' => 'insufficient_permissions',
-                'errors' => ['You do not have the required role.'],
+                'code' => 'authorization_denied',
+                'errors' => [],
             ], 403);
         }
 
