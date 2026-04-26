@@ -64,4 +64,23 @@ class TenantInvitation extends Model
             && $this->revoked_at === null
             && ($expiresAt === null || ($expiresAt instanceof Carbon && $expiresAt->isFuture()));
     }
+
+    public function status(): string
+    {
+        if ($this->accepted_at !== null) {
+            return 'accepted';
+        }
+
+        if ($this->revoked_at !== null) {
+            return 'revoked';
+        }
+
+        $expiresAt = $this->expires_at;
+
+        if ($expiresAt instanceof Carbon && $expiresAt->isPast()) {
+            return 'expired';
+        }
+
+        return 'pending';
+    }
 }
