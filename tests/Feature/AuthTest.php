@@ -1,231 +1,215 @@
 <?php
 
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+
+use function Pest\Laravel\getJson;
+use function Pest\Laravel\postJson;
+
 use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
-describe('Authentication API', function () {
+beforeEach(function (): void {
+    Role::firstOrCreate(['name' => 'user']);
+});
 
-    beforeEach(function () {
-        // Create the user role that is assigned during registration
-        Role::firstOrCreate(['name' => 'user']);
-    });
+it('successfully registers a new user', function (): void {
+    $response = postJson('/api/v1/register', [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => 'password123',
+    ]);
 
-    describe('POST /api/v1/register', function () {
-        it('successfully registers a new user', function () {
-            $userData = [
-                'name' => 'Test User',
-                'email' => 'test@example.com',
-                'password' => 'password123',
-            ];
+    $response->assertStatus(201)
+        ->assertJsonStructure([
+            'data' => [
+                'user' => [
+                    'id',
+                    'name',
+                    'email',
+                    'current_tenant',
+                    'email_verified_at',
+                    'created_at',
+                    'updated_at',
+                    'roles',
+                    'permissions',
+                ],
+                'token',
+            ],
+            'meta' => [
+                'token_type',
+            ],
+        ])
+        ->assertJsonPath('data.user.current_tenant.owner_user_id', fn (int $ownerUserId): bool => $ownerUserId > 0);
 
-            $response = $this->postJson('/api/v1/register', $userData);
+    $user = User::where('email', 'test@example.com')->first();
 
-            $response->assertStatus(201)
-                ->assertJsonStructure([
-                    'data' => [
-                        'user' => [
-                            'id',
-                            'name',
-                            'email',
-                            'email_verified_at',
-                            'created_at',
-                            'updated_at',
-                            'roles',
-                            'permissions',
-                        ],
-                        'token',
-                    ],
-                    'meta' => [
-                        'token_type',
-                    ],
-                ]);
+    expect($user)->not->toBeNull();
+    expect($user?->hasRole('user'))->toBeTrue();
+    expect($user?->current_tenant_id)->not->toBeNull();
+    expect(Tenant::query()->where('owner_user_id', $user?->id)->exists())->toBeTrue();
+    $response->assertJsonPath('data.user.current_tenant.owner_user_id', $user?->id);
+    $response->assertJsonPath('data.user.current_tenant.membership_role', 'owner');
+    $response->assertJsonPath('data.user.current_tenant.permissions.0', 'view permissions');
+});
 
-            expect(User::where('email', 'test@example.com')->exists())->toBeTrue();
-            expect(User::where('email', 'test@example.com')->first()->hasRole('user'))->toBeTrue();
-        });
+it('validates required fields on registration', function (): void {
+    postJson('/api/v1/register', [])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['name', 'email', 'password']);
+});
 
-        it('validates required fields', function () {
-            $response = $this->postJson('/api/v1/register', []);
+it('validates email uniqueness on registration', function (): void {
+    User::factory()->create(['email' => 'existing@example.com']);
 
-            $response->assertStatus(422)
-                ->assertJsonValidationErrors(['name', 'email', 'password']);
-        });
+    postJson('/api/v1/register', [
+        'name' => 'Test User',
+        'email' => 'existing@example.com',
+        'password' => 'password123',
+    ])->assertStatus(422)
+        ->assertJsonValidationErrors(['email']);
+});
 
-        it('validates email uniqueness', function () {
-            User::factory()->create(['email' => 'existing@example.com']);
+it('validates password strength on registration', function (): void {
+    postJson('/api/v1/register', [
+        'name' => 'Test User',
+        'email' => 'test@example.com',
+        'password' => '123',
+    ])->assertStatus(422)
+        ->assertJsonValidationErrors(['password']);
+});
 
-            $userData = [
-                'name' => 'Test User',
-                'email' => 'existing@example.com',
-                'password' => 'password123',
-            ];
+it('successfully logs in a user with correct credentials', function (): void {
+    User::factory()->create([
+        'email' => 'test@example.com',
+        'password' => bcrypt('password123'),
+    ]);
 
-            $response = $this->postJson('/api/v1/register', $userData);
+    postJson('/api/v1/login', [
+        'email' => 'test@example.com',
+        'password' => 'password123',
+    ])->assertStatus(200)
+        ->assertJsonStructure([
+            'data' => [
+                'user' => [
+                    'id',
+                    'name',
+                    'email',
+                    'current_tenant',
+                    'roles',
+                    'permissions',
+                ],
+                'token',
+            ],
+            'meta' => [
+                'token_type',
+            ],
+        ]);
+});
 
-            $response->assertStatus(422)
-                ->assertJsonValidationErrors(['email']);
-        });
+it('fails login with incorrect credentials', function (): void {
+    User::factory()->create([
+        'email' => 'test@example.com',
+        'password' => bcrypt('password123'),
+    ]);
 
-        it('validates password strength', function () {
-            $userData = [
-                'name' => 'Test User',
-                'email' => 'test@example.com',
-                'password' => '123', // Too short
-            ];
+    postJson('/api/v1/login', [
+        'email' => 'test@example.com',
+        'password' => 'wrongpassword',
+    ])->assertStatus(401)
+        ->assertJson([
+            'message' => 'Unauthenticated.',
+            'code' => 'unauthenticated',
+            'errors' => [],
+        ]);
+});
 
-            $response = $this->postJson('/api/v1/register', $userData);
+it('validates required fields on login', function (): void {
+    postJson('/api/v1/login', [])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['email', 'password']);
+});
 
-            $response->assertStatus(422)
-                ->assertJsonValidationErrors(['password']);
-        });
-    });
+it('successfully logs out an authenticated user', function (): void {
+    $user = User::factory()->create();
+    $token = $user->createToken('test-token')->plainTextToken;
 
-    describe('POST /api/v1/login', function () {
-        beforeEach(function () {
-            $this->user = User::factory()->create([
-                'email' => 'test@example.com',
-                'password' => bcrypt('password123'),
-            ]);
-        });
+    postJson('/api/v1/logout', [], [
+        'Authorization' => 'Bearer ' . $token,
+    ])
+        ->assertStatus(200)
+        ->assertJson([
+            'data' => null,
+            'meta' => [
+                'message' => 'Successfully logged out.',
+            ],
+        ]);
 
-        it('successfully logs in a user with correct credentials', function () {
-            $loginData = [
-                'email' => 'test@example.com',
-                'password' => 'password123',
-            ];
+    expect($user->tokens()->count())->toBe(0);
+});
 
-            $response = $this->postJson('/api/v1/login', $loginData);
+it('fails logout without authentication', function (): void {
+    postJson('/api/v1/logout')
+        ->assertStatus(401);
+});
 
-            $response->assertStatus(200)
-                ->assertJsonStructure([
-                    'data' => [
-                        'user' => [
-                            'id',
-                            'name',
-                            'email',
-                            'roles',
-                            'permissions',
-                        ],
-                        'token',
-                    ],
-                    'meta' => [
-                        'token_type',
-                    ],
-                ]);
-        });
+it('returns authenticated user information', function (): void {
+    $user = User::factory()->create();
+    $token = $user->createToken('test-token')->plainTextToken;
 
-        it('fails with incorrect credentials', function () {
-            $loginData = [
-                'email' => 'test@example.com',
-                'password' => 'wrongpassword',
-            ];
+    getJson('/api/v1/me', [
+        'Authorization' => 'Bearer ' . $token,
+    ])
+        ->assertStatus(200)
+        ->assertJsonStructure([
+            'data' => [
+                'id',
+                'name',
+                'email',
+                'current_tenant',
+                'roles',
+                'permissions',
+            ],
+        ])
+        ->assertJson([
+            'data' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+        ])
+        ->assertJsonPath('data.current_tenant.id', $user->currentTenantOrFail()->id)
+        ->assertJsonPath('data.current_tenant.membership_role', 'owner');
+});
 
-            $response = $this->postJson('/api/v1/login', $loginData);
+it('fails me without authentication', function (): void {
+    getJson('/api/v1/me')
+        ->assertStatus(401);
+});
 
-            $response->assertStatus(422)
-                ->assertJsonValidationErrors(['email']);
-        });
+it('successfully refreshes token', function (): void {
+    $user = User::factory()->create();
+    $oldToken = $user->createToken('test-token')->plainTextToken;
 
-        it('validates required fields', function () {
-            $response = $this->postJson('/api/v1/login', []);
+    postJson('/api/v1/refresh', [], [
+        'Authorization' => 'Bearer ' . $oldToken,
+    ])
+        ->assertStatus(200)
+        ->assertJsonStructure([
+            'data' => [
+                'token',
+            ],
+            'meta' => [
+                'token_type',
+            ],
+        ]);
 
-            $response->assertStatus(422)
-                ->assertJsonValidationErrors(['email', 'password']);
-        });
-    });
+    expect($user->tokens()->count())->toBe(1);
+});
 
-    describe('POST /api/v1/logout', function () {
-        it('successfully logs out an authenticated user', function () {
-            $user = User::factory()->create();
-            $token = $user->createToken('test-token')->plainTextToken;
-
-            $response = $this->withHeaders([
-                'Authorization' => 'Bearer ' . $token,
-            ])->postJson('/api/v1/logout');
-
-            $response->assertStatus(200)
-                ->assertJson([
-                    'data' => null,
-                    'meta' => [
-                        'message' => 'Successfully logged out.',
-                    ],
-                ]);
-
-            expect($user->tokens()->count())->toBe(0);
-        });
-
-        it('fails without authentication', function () {
-            $response = $this->postJson('/api/v1/logout');
-
-            $response->assertStatus(401);
-        });
-    });
-
-    describe('GET /api/v1/me', function () {
-        it('returns authenticated user information', function () {
-            $user = User::factory()->create();
-            $token = $user->createToken('test-token')->plainTextToken;
-
-            $response = $this->withHeaders([
-                'Authorization' => 'Bearer ' . $token,
-            ])->getJson('/api/v1/me');
-
-            $response->assertStatus(200)
-                ->assertJsonStructure([
-                    'data' => [
-                        'id',
-                        'name',
-                        'email',
-                        'roles',
-                        'permissions',
-                    ],
-                ])
-                ->assertJson([
-                    'data' => [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                    ],
-                ]);
-        });
-
-        it('fails without authentication', function () {
-            $response = $this->getJson('/api/v1/me');
-
-            $response->assertStatus(401);
-        });
-    });
-
-    describe('POST /api/v1/refresh', function () {
-        it('successfully refreshes token', function () {
-            $user = User::factory()->create();
-            $oldToken = $user->createToken('test-token')->plainTextToken;
-
-            $response = $this->withHeaders([
-                'Authorization' => 'Bearer ' . $oldToken,
-            ])->postJson('/api/v1/refresh');
-
-            $response->assertStatus(200)
-                ->assertJsonStructure([
-                    'data' => [
-                        'token',
-                    ],
-                    'meta' => [
-                        'token_type',
-                    ],
-                ]);
-
-            // Verify old token is deleted
-            expect($user->tokens()->count())->toBe(1);
-        });
-
-        it('fails without authentication', function () {
-            $response = $this->postJson('/api/v1/refresh');
-
-            $response->assertStatus(401);
-        });
-    });
+it('fails refresh without authentication', function (): void {
+    postJson('/api/v1/refresh')
+        ->assertStatus(401);
 });

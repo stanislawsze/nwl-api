@@ -18,11 +18,11 @@ class CheckRole
     {
         $user = Auth::user();
 
-        if (! $user || ! $user->hasRole($role)) {
+        if (! $user || ! $user->hasTenantRole($role)) {
             return response()->json([
                 'message' => 'Forbidden',
-                'code' => 'insufficient_permissions',
-                'errors' => ['You do not have the required role.'],
+                'code' => 'authorization_denied',
+                'errors' => [],
             ], 403);
         }
 

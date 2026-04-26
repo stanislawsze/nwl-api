@@ -11,26 +11,43 @@ class UserPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('view users');
+        return $user->hasTenantPermission('view users');
     }
 
     public function view(User $user, User $targetUser): bool
     {
-        return $user->hasPermissionTo('view users') || $user->id === $targetUser->id;
+        if ($user->id === $targetUser->id) {
+            return true;
+        }
+
+        if (! $user->hasCurrentTenantAccessTo($targetUser)) {
+            return false;
+        }
+
+        return $user->hasTenantPermission('view users');
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('create users');
+        return $user->hasTenantPermission('create users');
     }
 
     public function update(User $user, User $targetUser): bool
     {
-        return $user->hasPermissionTo('edit users') || $user->id === $targetUser->id;
+        if ($user->id === $targetUser->id) {
+            return true;
+        }
+
+        if (! $user->hasCurrentTenantAccessTo($targetUser)) {
+            return false;
+        }
+
+        return $user->hasTenantPermission('edit users');
     }
 
     public function delete(User $user, User $targetUser): bool
     {
-        return $user->hasPermissionTo('delete users');
+        return $user->hasCurrentTenantAccessTo($targetUser)
+            && $user->hasTenantPermission('delete users');
     }
 }

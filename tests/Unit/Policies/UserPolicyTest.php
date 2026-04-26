@@ -1,138 +1,176 @@
 <?php
 
+use App\Domain\Tenancy\Services\TenancyService;
 use App\Models\User;
 use App\Policies\Domain\Auth\UserPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
-use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
-describe('UserPolicy', function () {
-    beforeEach(function () {
-        $this->policy = new UserPolicy;
-
-        // Create permissions used in the policy
-        Permission::firstOrCreate(['name' => 'view users']);
-        Permission::firstOrCreate(['name' => 'create users']);
-        Permission::firstOrCreate(['name' => 'edit users']);
-        Permission::firstOrCreate(['name' => 'delete users']);
-    });
-
-    describe('viewAny()', function () {
-        it('allows user with view users permission', function () {
-            $user = User::factory()->create();
-            $user->givePermissionTo('view users');
-
-            $result = $this->policy->viewAny($user);
-
-            expect($result)->toBeTrue();
-        });
-
-        it('denies user without view users permission', function () {
-            $user = User::factory()->create();
-
-            $result = $this->policy->viewAny($user);
-
-            expect($result)->toBeFalse();
-        });
-    });
-
-    describe('view()', function () {
-        it('allows user with view users permission', function () {
-            $user = User::factory()->create();
-            $targetUser = User::factory()->create();
-            $user->givePermissionTo('view users');
-
-            $result = $this->policy->view($user, $targetUser);
-
-            expect($result)->toBeTrue();
-        });
-
-        it('allows user to view their own profile', function () {
-            $user = User::factory()->create();
-
-            $result = $this->policy->view($user, $user);
-
-            expect($result)->toBeTrue();
-        });
-
-        it('denies user without permission viewing another user', function () {
-            $user = User::factory()->create();
-            $targetUser = User::factory()->create();
-
-            $result = $this->policy->view($user, $targetUser);
-
-            expect($result)->toBeFalse();
-        });
-    });
-
-    describe('create()', function () {
-        it('allows user with create users permission', function () {
-            $user = User::factory()->create();
-            $user->givePermissionTo('create users');
-
-            $result = $this->policy->create($user);
-
-            expect($result)->toBeTrue();
-        });
-
-        it('denies user without create users permission', function () {
-            $user = User::factory()->create();
-
-            $result = $this->policy->create($user);
-
-            expect($result)->toBeFalse();
-        });
-    });
-
-    describe('update()', function () {
-        it('allows user with edit users permission', function () {
-            $user = User::factory()->create();
-            $targetUser = User::factory()->create();
-            $user->givePermissionTo('edit users');
-
-            $result = $this->policy->update($user, $targetUser);
-
-            expect($result)->toBeTrue();
-        });
-
-        it('allows user to update their own profile', function () {
-            $user = User::factory()->create();
-
-            $result = $this->policy->update($user, $user);
-
-            expect($result)->toBeTrue();
-        });
-
-        it('denies user without permission updating another user', function () {
-            $user = User::factory()->create();
-            $targetUser = User::factory()->create();
-
-            $result = $this->policy->update($user, $targetUser);
-
-            expect($result)->toBeFalse();
-        });
-    });
-
-    describe('delete()', function () {
-        it('allows user with delete users permission', function () {
-            $user = User::factory()->create();
-            $targetUser = User::factory()->create();
-            $user->givePermissionTo('delete users');
-
-            $result = $this->policy->delete($user, $targetUser);
-
-            expect($result)->toBeTrue();
-        });
-
-        it('denies user without delete users permission', function () {
-            $user = User::factory()->create();
-            $targetUser = User::factory()->create();
-
-            $result = $this->policy->delete($user, $targetUser);
-
-            expect($result)->toBeFalse();
-        });
-    });
+beforeEach(function (): void {
+    Permission::firstOrCreate(['name' => 'view users']);
+    Permission::firstOrCreate(['name' => 'create users']);
+    Permission::firstOrCreate(['name' => 'edit users']);
+    Permission::firstOrCreate(['name' => 'delete users']);
 });
+
+it('allows viewAny with view users permission', function (): void {
+    $user = User::factory()->create();
+    $user->givePermissionTo('view users');
+
+    expect(userPolicy()->viewAny($user))->toBeTrue();
+});
+
+it('allows viewAny for a tenant owner without explicit global permissions', function (): void {
+    $user = User::factory()->create();
+    app(TenancyService::class)->ensurePersonalTenant($user);
+
+    expect(userPolicy()->viewAny($user))->toBeTrue();
+});
+
+it('denies viewAny without view users permission', function (): void {
+    $owner = User::factory()->create();
+    $user = User::factory()->create();
+    $tenant = app(TenancyService::class)->ensurePersonalTenant($owner);
+    app(TenancyService::class)->assignUserToTenant($tenant, $user, 'member');
+    app(TenancyService::class)->switchTenant($user, $tenant);
+
+    expect(userPolicy()->viewAny($user))->toBeFalse();
+});
+
+it('allows view with view users permission', function (): void {
+    $user = User::factory()->create();
+    $targetUser = User::factory()->create();
+    $tenant = app(TenancyService::class)->ensurePersonalTenant($user);
+    app(TenancyService::class)->assignUserToTenant($tenant, $targetUser, 'member');
+    app(TenancyService::class)->switchTenant($targetUser, $tenant);
+    $user->givePermissionTo('view users');
+
+    expect(userPolicy()->view($user, $targetUser))->toBeTrue();
+});
+
+it('allows viewing own profile', function (): void {
+    $user = User::factory()->create();
+
+    expect(userPolicy()->view($user, $user))->toBeTrue();
+});
+
+it('denies viewing another user without permission', function (): void {
+    $owner = User::factory()->create();
+    $user = User::factory()->create();
+    $targetUser = User::factory()->create();
+    $tenant = app(TenancyService::class)->ensurePersonalTenant($owner);
+    app(TenancyService::class)->assignUserToTenant($tenant, $user, 'member');
+    app(TenancyService::class)->switchTenant($user, $tenant);
+    app(TenancyService::class)->assignUserToTenant($tenant, $targetUser, 'member');
+    app(TenancyService::class)->switchTenant($targetUser, $tenant);
+
+    expect(userPolicy()->view($user, $targetUser))->toBeFalse();
+});
+
+it('denies viewing a user from another tenant even with global permission', function (): void {
+    $user = User::factory()->create();
+    $targetUser = User::factory()->create();
+    app(TenancyService::class)->ensurePersonalTenant($user);
+    app(TenancyService::class)->ensurePersonalTenant($targetUser);
+    $user->givePermissionTo('view users');
+
+    expect(userPolicy()->view($user, $targetUser))->toBeFalse();
+});
+
+it('allows create with create users permission', function (): void {
+    $user = User::factory()->create();
+    $user->givePermissionTo('create users');
+
+    expect(userPolicy()->create($user))->toBeTrue();
+});
+
+it('denies create without create users permission', function (): void {
+    $owner = User::factory()->create();
+    $user = User::factory()->create();
+    $tenant = app(TenancyService::class)->ensurePersonalTenant($owner);
+    app(TenancyService::class)->assignUserToTenant($tenant, $user, 'member');
+    app(TenancyService::class)->switchTenant($user, $tenant);
+
+    expect(userPolicy()->create($user))->toBeFalse();
+});
+
+it('allows update with edit users permission', function (): void {
+    $user = User::factory()->create();
+    $targetUser = User::factory()->create();
+    $tenant = app(TenancyService::class)->ensurePersonalTenant($user);
+    app(TenancyService::class)->assignUserToTenant($tenant, $targetUser, 'member');
+    app(TenancyService::class)->switchTenant($targetUser, $tenant);
+    $user->givePermissionTo('edit users');
+
+    expect(userPolicy()->update($user, $targetUser))->toBeTrue();
+});
+
+it('allows updating own profile', function (): void {
+    $user = User::factory()->create();
+
+    expect(userPolicy()->update($user, $user))->toBeTrue();
+});
+
+it('denies updating another user without permission', function (): void {
+    $owner = User::factory()->create();
+    $user = User::factory()->create();
+    $targetUser = User::factory()->create();
+    $tenant = app(TenancyService::class)->ensurePersonalTenant($owner);
+    app(TenancyService::class)->assignUserToTenant($tenant, $user, 'member');
+    app(TenancyService::class)->switchTenant($user, $tenant);
+    app(TenancyService::class)->assignUserToTenant($tenant, $targetUser, 'member');
+    app(TenancyService::class)->switchTenant($targetUser, $tenant);
+
+    expect(userPolicy()->update($user, $targetUser))->toBeFalse();
+});
+
+it('denies updating a user from another tenant even with global permission', function (): void {
+    $user = User::factory()->create();
+    $targetUser = User::factory()->create();
+    app(TenancyService::class)->ensurePersonalTenant($user);
+    app(TenancyService::class)->ensurePersonalTenant($targetUser);
+    $user->givePermissionTo('edit users');
+
+    expect(userPolicy()->update($user, $targetUser))->toBeFalse();
+});
+
+it('allows delete with delete users permission', function (): void {
+    $user = User::factory()->create();
+    $targetUser = User::factory()->create();
+    $tenant = app(TenancyService::class)->ensurePersonalTenant($user);
+    app(TenancyService::class)->assignUserToTenant($tenant, $targetUser, 'member');
+    app(TenancyService::class)->switchTenant($targetUser, $tenant);
+    $user->givePermissionTo('delete users');
+
+    expect(userPolicy()->delete($user, $targetUser))->toBeTrue();
+});
+
+it('denies delete without delete users permission', function (): void {
+    $owner = User::factory()->create();
+    $user = User::factory()->create();
+    $targetUser = User::factory()->create();
+    $tenant = app(TenancyService::class)->ensurePersonalTenant($owner);
+    app(TenancyService::class)->assignUserToTenant($tenant, $user, 'member');
+    app(TenancyService::class)->switchTenant($user, $tenant);
+    app(TenancyService::class)->assignUserToTenant($tenant, $targetUser, 'member');
+    app(TenancyService::class)->switchTenant($targetUser, $tenant);
+
+    expect(userPolicy()->delete($user, $targetUser))->toBeFalse();
+});
+
+it('denies deleting a user from another tenant even with global permission', function (): void {
+    $user = User::factory()->create();
+    $targetUser = User::factory()->create();
+    app(TenancyService::class)->ensurePersonalTenant($user);
+    app(TenancyService::class)->ensurePersonalTenant($targetUser);
+    $user->givePermissionTo('delete users');
+
+    expect(userPolicy()->delete($user, $targetUser))->toBeFalse();
+});
+
+function userPolicy(): UserPolicy
+{
+    return new UserPolicy;
+}

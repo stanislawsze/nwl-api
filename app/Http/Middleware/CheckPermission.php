@@ -18,11 +18,11 @@ class CheckPermission
     {
         $user = Auth::user();
 
-        if (! $user || ! $user->hasPermissionTo($permission)) {
+        if (! $user || ! $user->hasTenantPermission($permission)) {
             return response()->json([
                 'message' => 'Forbidden',
-                'code' => 'insufficient_permissions',
-                'errors' => ['You do not have the required permission.'],
+                'code' => 'authorization_denied',
+                'errors' => [],
             ], 403);
         }
 
