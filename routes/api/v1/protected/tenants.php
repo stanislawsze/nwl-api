@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\TenantAuditLogController;
 use App\Http\Controllers\Api\V1\TenantController;
 use App\Http\Controllers\Api\V1\TenantInvitationController;
 use App\Http\Controllers\Api\V1\TenantMemberController;
@@ -15,6 +16,9 @@ Route::prefix('tenants')
         });
 
         Route::prefix('current')->group(function () {
+            Route::get('/audit-logs', [TenantAuditLogController::class, 'index'])
+                ->name('audit-logs.index');
+
             Route::prefix('members')
                 ->controller(TenantMemberController::class)
                 ->name('members.')

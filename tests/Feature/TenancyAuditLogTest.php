@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 
 use function Pest\Laravel\deleteJson;
+use function Pest\Laravel\getJson;
 use function Pest\Laravel\patchJson;
 use function Pest\Laravel\postJson;
 
@@ -123,4 +124,63 @@ it('logs invited user registration as a dedicated audit event', function (): voi
     $registeredUser = User::query()->where('email', 'new-invitee@example.com')->firstOrFail();
 
     expect(Activity::query()->where('event', 'tenant.invitation_registered')->latest('id')->first()?->properties['registered_user_id'])->toBe($registeredUser->id);
+});
+
+it('lists audit logs for the current tenant', function (): void {
+    $owner = User::factory()->create();
+    $service = app(TenancyService::class);
+    $service->ensurePersonalTenant($owner);
+    $token = $owner->createToken('tenant-audit')->plainTextToken;
+
+    postJson('/api/v1/tenants/current/invitations', [
+        'email' => 'audit-invitee@example.com',
+        'role' => 'support',
+        'expires_in_hours' => 24,
+    ], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertCreated();
+
+    getJson('/api/v1/tenants/current/audit-logs', [
+        'Authorization' => 'Bearer ' . $token,
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.0.event', 'tenant.invitation_created')
+        ->assertJsonPath('data.0.causer.email', $owner->email)
+        ->assertJsonPath('data.0.properties.email', 'audit-invitee@example.com')
+        ->assertJsonPath('meta.limit', 50);
+});
+
+it('filters audit logs by event', function (): void {
+    $owner = User::factory()->create();
+    $service = app(TenancyService::class);
+    $service->ensurePersonalTenant($owner);
+    $token = $owner->createToken('tenant-audit')->plainTextToken;
+
+    postJson('/api/v1/tenants/current/invitations', [
+        'email' => 'filtered-invitee@example.com',
+        'role' => 'support',
+        'expires_in_hours' => 24,
+    ], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertCreated();
+
+    getJson('/api/v1/tenants/current/audit-logs?event=tenant.member_removed', [
+        'Authorization' => 'Bearer ' . $token,
+    ])
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
+});
+
+it('forbids audit logs without the tenant permission', function (): void {
+    $owner = User::factory()->create();
+    $support = User::factory()->create();
+    $service = app(TenancyService::class);
+    $tenant = $service->ensurePersonalTenant($owner);
+    $service->assignUserToTenant($tenant, $support, 'support');
+    $service->switchTenant($support, $tenant);
+    $token = $support->createToken('tenant-audit')->plainTextToken;
+
+    getJson('/api/v1/tenants/current/audit-logs', [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertForbidden();
 });

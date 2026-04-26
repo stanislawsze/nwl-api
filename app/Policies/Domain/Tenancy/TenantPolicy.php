@@ -77,4 +77,10 @@ class TenantPolicy
         return $user->tenants()->whereKey($tenant->id)->exists()
             && $user->hasTenantPermission('create users', $tenant);
     }
+
+    public function viewAuditLogs(User $user, Tenant $tenant): bool
+    {
+        return $user->tenants()->whereKey($tenant->id)->exists()
+            && $user->hasTenantPermission('view audit logs', $tenant);
+    }
 }

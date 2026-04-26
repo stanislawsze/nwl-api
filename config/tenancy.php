@@ -15,6 +15,7 @@ return [
             'create users',
             'edit users',
             'delete users',
+            'view audit logs',
         ],
         'admin' => [
             'view permissions',
@@ -22,6 +23,7 @@ return [
             'view users',
             'create users',
             'edit users',
+            'view audit logs',
         ],
         'moderator' => [
             'view users',
