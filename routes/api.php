@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DiscordAuthController;
 use App\Http\Controllers\Api\V1\DiscordIntegrationController;
 use App\Http\Controllers\Api\V1\TenantController;
+use App\Http\Controllers\Api\V1\TenantMemberController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')
@@ -23,6 +24,10 @@ Route::prefix('v1')
             Route::get('/tenants', [TenantController::class, 'index'])->name('tenants.index');
             Route::post('/tenants', [TenantController::class, 'store'])->name('tenants.store');
             Route::post('/tenants/{tenant}/switch', [TenantController::class, 'switchCurrent'])->name('tenants.switch');
+            Route::get('/tenants/current/members', [TenantMemberController::class, 'index'])->name('tenants.members.index');
+            Route::post('/tenants/current/members', [TenantMemberController::class, 'store'])->name('tenants.members.store');
+            Route::patch('/tenants/current/members/{user}', [TenantMemberController::class, 'update'])->name('tenants.members.update');
+            Route::delete('/tenants/current/members/{user}', [TenantMemberController::class, 'destroy'])->name('tenants.members.destroy');
             Route::get('/discord/integration', [DiscordIntegrationController::class, 'show'])->name('discord.integration.show');
             Route::put('/discord/integration', [DiscordIntegrationController::class, 'upsert'])->name('discord.integration.upsert');
             Route::patch('/discord/integration/credentials', [DiscordIntegrationController::class, 'updateCredentials'])->name('discord.integration.credentials.update');

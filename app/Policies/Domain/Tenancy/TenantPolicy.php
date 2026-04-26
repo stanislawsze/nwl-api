@@ -29,4 +29,28 @@ class TenantPolicy
     {
         return $user->tenants()->whereKey($tenant->id)->exists();
     }
+
+    public function viewMembers(User $user, Tenant $tenant): bool
+    {
+        return $user->tenants()->whereKey($tenant->id)->exists()
+            && $user->hasTenantPermission('view users', $tenant);
+    }
+
+    public function addMember(User $user, Tenant $tenant): bool
+    {
+        return $user->tenants()->whereKey($tenant->id)->exists()
+            && $user->hasTenantPermission('create users', $tenant);
+    }
+
+    public function updateMember(User $user, Tenant $tenant): bool
+    {
+        return $user->tenants()->whereKey($tenant->id)->exists()
+            && $user->hasTenantPermission('edit users', $tenant);
+    }
+
+    public function removeMember(User $user, Tenant $tenant): bool
+    {
+        return $user->tenants()->whereKey($tenant->id)->exists()
+            && $user->hasTenantPermission('delete users', $tenant);
+    }
 }

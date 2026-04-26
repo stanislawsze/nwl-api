@@ -7,7 +7,9 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 
+use function Pest\Laravel\deleteJson;
 use function Pest\Laravel\getJson;
+use function Pest\Laravel\patchJson;
 use function Pest\Laravel\postJson;
 use function Pest\Laravel\putJson;
 
@@ -171,4 +173,101 @@ it('forbids switching to a tenant the user does not belong to', function (): voi
             'code' => 'authorization_denied',
             'errors' => [],
         ]);
+});
+
+it('lists the current tenant members with their tenant roles', function (): void {
+    $owner = User::factory()->create([
+        'name' => 'Alpha Owner',
+    ]);
+    $member = User::factory()->create([
+        'name' => 'Zulu Support',
+    ]);
+    $service = app(TenancyService::class);
+    $tenant = $service->ensurePersonalTenant($owner);
+    $service->assignUserToTenant($tenant, $member, 'support');
+    $token = $owner->createToken('tenant-members')->plainTextToken;
+
+    getJson('/api/v1/tenants/current/members', [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('data.0.membership_role', 'owner')
+        ->assertJsonPath('data.0.is_current_user', true)
+        ->assertJsonPath('data.1.membership_role', 'support')
+        ->assertJsonPath('data.1.email', $member->email)
+        ->assertJsonPath('data.1.is_current_user', false);
+});
+
+it('adds an existing user to the current tenant', function (): void {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $service = app(TenancyService::class);
+    $service->ensurePersonalTenant($owner);
+    $token = $owner->createToken('tenant-add')->plainTextToken;
+
+    postJson('/api/v1/tenants/current/members', [
+        'email' => $member->email,
+        'role' => 'support',
+    ], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertCreated()
+        ->assertJsonPath('data.email', $member->email)
+        ->assertJsonPath('data.membership_role', 'support')
+        ->assertJsonPath('meta.message', 'Tenant member added successfully.');
+
+    expect($owner->currentTenantOrFail()->users()->whereKey($member->id)->exists())->toBeTrue();
+});
+
+it('updates a tenant member role', function (): void {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $service = app(TenancyService::class);
+    $tenant = $service->ensurePersonalTenant($owner);
+    $service->assignUserToTenant($tenant, $member, 'support');
+    $token = $owner->createToken('tenant-update')->plainTextToken;
+
+    patchJson('/api/v1/tenants/current/members/' . $member->id, [
+        'role' => 'admin',
+    ], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertOk()
+        ->assertJsonPath('data.membership_role', 'admin')
+        ->assertJsonPath('meta.message', 'Tenant member role updated successfully.');
+
+    expect($member->fresh()->tenantMembershipRole($tenant))->toBe('admin');
+});
+
+it('forbids adding a tenant member without tenant permissions', function (): void {
+    $owner = User::factory()->create();
+    $support = User::factory()->create();
+    $target = User::factory()->create();
+    $service = app(TenancyService::class);
+    $tenant = $service->ensurePersonalTenant($owner);
+    $service->assignUserToTenant($tenant, $support, 'support');
+    $service->switchTenant($support, $tenant);
+    $token = $support->createToken('tenant-add')->plainTextToken;
+
+    postJson('/api/v1/tenants/current/members', [
+        'email' => $target->email,
+        'role' => 'member',
+    ], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertForbidden()
+        ->assertJson([
+            'message' => 'Forbidden',
+            'code' => 'authorization_denied',
+            'errors' => [],
+        ]);
+});
+
+it('prevents removing the current tenant owner', function (): void {
+    $owner = User::factory()->create();
+    $service = app(TenancyService::class);
+    $tenant = $service->ensurePersonalTenant($owner);
+    $token = $owner->createToken('tenant-remove')->plainTextToken;
+
+    deleteJson('/api/v1/tenants/current/members/' . $owner->id, [], [
+        'Authorization' => 'Bearer ' . $token,
+    ])->assertStatus(422)
+        ->assertJsonValidationErrors(['user']);
 });
