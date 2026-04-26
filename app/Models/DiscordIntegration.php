@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
+    'tenant_id',
     'owner_user_id',
     'guild_id',
     'guild_name',
@@ -30,6 +31,14 @@ class DiscordIntegration extends Model
             'bot_token' => 'encrypted',
             'settings' => 'array',
         ];
+    }
+
+    /**
+     * @return BelongsTo<Tenant, $this>
+     */
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 
     /**

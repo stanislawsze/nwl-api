@@ -7,6 +7,7 @@ use App\Domain\Auth\Events\UserAuthenticated;
 use App\Domain\Auth\Services\AuthService;
 use App\Domain\Discord\DTOs\DiscordOAuthUserDTO;
 use App\Domain\Discord\Events\DiscordUserLinked;
+use App\Domain\Tenancy\Services\TenancyService;
 use App\Models\DiscordIntegration;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,7 @@ class DiscordAuthenticationService
     public function __construct(
         protected AuthService $authService,
         protected DiscordIntegrationService $discordIntegrationService,
+        protected TenancyService $tenancyService,
     ) {}
 
     public function authenticate(DiscordOAuthUserDTO $discordUser, ?DiscordIntegration $integration = null): AuthenticatedUserDTO
@@ -33,6 +35,8 @@ class DiscordAuthenticationService
                     'password' => bin2hex(random_bytes(32)),
                 ]);
             }
+
+            $this->tenancyService->ensurePersonalTenant($user);
 
             $this->discordIntegrationService->linkDiscordAccount($user, $discordUser);
 

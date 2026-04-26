@@ -7,6 +7,7 @@ use App\Domain\Auth\DTOs\LoginUserDTO;
 use App\Domain\Auth\DTOs\RegisterUserDTO;
 use App\Domain\Auth\Events\UserAuthenticated;
 use App\Domain\Auth\Events\UserRegistered;
+use App\Domain\Tenancy\Services\TenancyService;
 use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
@@ -22,6 +23,7 @@ class AuthService
     public function __construct(
         protected AuthFactory $auth,
         protected HashManager $hash,
+        protected TenancyService $tenancyService,
     ) {}
 
     public function register(RegisterUserDTO $dto): AuthenticatedUserDTO
@@ -37,6 +39,7 @@ class AuthService
             $user->assignRole($role);
 
             $this->assignDefaultPermissions($user);
+            $this->tenancyService->ensurePersonalTenant($user);
 
             event(new UserRegistered($user));
             event(new UserAuthenticated($user, 'password'));

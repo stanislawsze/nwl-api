@@ -19,7 +19,9 @@ class DiscordIntegrationService
     public function upsertIntegration(User $owner, array $attributes): DiscordIntegration
     {
         return DB::transaction(function () use ($owner, $attributes) {
+            $tenant = $owner->currentTenantOrFail();
             $payload = [
+                'tenant_id' => $tenant->id,
                 'guild_id' => $attributes['guild_id'],
                 'guild_name' => $attributes['guild_name'],
                 'bot_enabled' => $attributes['bot_enabled'] ?? false,
@@ -38,7 +40,10 @@ class DiscordIntegrationService
             }
 
             $integration = DiscordIntegration::query()->updateOrCreate(
-                ['owner_user_id' => $owner->id],
+                [
+                    'tenant_id' => $tenant->id,
+                    'owner_user_id' => $owner->id,
+                ],
                 $payload,
             );
 
@@ -117,9 +122,11 @@ class DiscordIntegrationService
 
     public function ownedIntegrationOrFail(User $owner, int $integrationId): DiscordIntegration
     {
+        $tenant = $owner->currentTenantOrFail();
+
         $integration = DiscordIntegration::query()
             ->whereKey($integrationId)
-            ->where('owner_user_id', $owner->id)
+            ->where('tenant_id', $tenant->id)
             ->first();
 
         if ($integration === null) {
@@ -136,7 +143,9 @@ class DiscordIntegrationService
      */
     public function updateCredentials(User $owner, array $attributes): DiscordIntegration
     {
-        $integration = $owner->ownedDiscordIntegrations()->first();
+        $integration = DiscordIntegration::query()
+            ->where('tenant_id', $owner->currentTenantOrFail()->id)
+            ->first();
 
         if ($integration === null) {
             throw ValidationException::withMessages([
@@ -155,7 +164,9 @@ class DiscordIntegrationService
      */
     public function clearCredentials(User $owner, array $fields): DiscordIntegration
     {
-        $integration = $owner->ownedDiscordIntegrations()->first();
+        $integration = DiscordIntegration::query()
+            ->where('tenant_id', $owner->currentTenantOrFail()->id)
+            ->first();
 
         if ($integration === null) {
             throw ValidationException::withMessages([

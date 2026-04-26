@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -45,6 +46,8 @@ it('successfully registers a new user', function (): void {
 
     expect($user)->not->toBeNull();
     expect($user?->hasRole('user'))->toBeTrue();
+    expect($user?->current_tenant_id)->not->toBeNull();
+    expect(Tenant::query()->where('owner_user_id', $user?->id)->exists())->toBeTrue();
 });
 
 it('validates required fields on registration', function (): void {

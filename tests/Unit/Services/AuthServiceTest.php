@@ -4,6 +4,7 @@ use App\Domain\Auth\DTOs\AuthenticatedUserDTO;
 use App\Domain\Auth\DTOs\LoginUserDTO;
 use App\Domain\Auth\DTOs\RegisterUserDTO;
 use App\Domain\Auth\Services\AuthService;
+use App\Domain\Tenancy\Services\TenancyService;
 use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
@@ -80,5 +81,6 @@ function makeAuthService(): AuthService
     return new AuthService(
         app(AuthFactory::class),
         app(HashManager::class),
+        app(TenancyService::class),
     );
 }

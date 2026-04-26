@@ -30,6 +30,7 @@ it('allows an authenticated user to configure a discord integration and role map
     $owner = User::factory()->create();
     $token = $owner->createToken('owner-token')->plainTextToken;
     $role = Role::query()->where('name', 'discord-member')->firstOrFail();
+    $tenant = $owner->currentTenantOrFail();
 
     putJson('/api/v1/discord/integration', [
         'guild_id' => '123456789',
@@ -76,8 +77,10 @@ it('allows an authenticated user to configure a discord integration and role map
 it('updates discord credentials without replacing the whole integration', function (): void {
     $owner = User::factory()->create();
     $token = $owner->createToken('owner-token')->plainTextToken;
+    $tenant = $owner->currentTenantOrFail();
 
     DiscordIntegration::query()->create([
+        'tenant_id' => $tenant->id,
         'owner_user_id' => $owner->id,
         'guild_id' => '123456789',
         'guild_name' => 'NWL Crew',
@@ -102,8 +105,10 @@ it('updates discord credentials without replacing the whole integration', functi
 it('clears selected discord credentials', function (): void {
     $owner = User::factory()->create();
     $token = $owner->createToken('owner-token')->plainTextToken;
+    $tenant = $owner->currentTenantOrFail();
 
     DiscordIntegration::query()->create([
+        'tenant_id' => $tenant->id,
         'owner_user_id' => $owner->id,
         'guild_id' => '123456789',
         'guild_name' => 'NWL Crew',
@@ -142,8 +147,10 @@ it('returns a discord authorization url for the frontend', function (): void {
 it('lists guild roles using the configured bot token', function (): void {
     $owner = User::factory()->create();
     $token = $owner->createToken('owner-token')->plainTextToken;
+    $tenant = $owner->currentTenantOrFail();
 
     DiscordIntegration::query()->create([
+        'tenant_id' => $tenant->id,
         'owner_user_id' => $owner->id,
         'guild_id' => '123456789',
         'guild_name' => 'NWL Crew',
@@ -184,8 +191,10 @@ it('lists guild roles using the configured bot token', function (): void {
 it('fails to list guild roles when no bot token is configured', function (): void {
     $owner = User::factory()->create();
     $token = $owner->createToken('owner-token')->plainTextToken;
+    $tenant = $owner->currentTenantOrFail();
 
     DiscordIntegration::query()->create([
+        'tenant_id' => $tenant->id,
         'owner_user_id' => $owner->id,
         'guild_id' => '123456789',
         'guild_name' => 'NWL Crew',
@@ -202,8 +211,10 @@ it('fails to list guild roles when no bot token is configured', function (): voi
 
 it('uses persisted oauth configuration for integration-specific redirects', function (): void {
     $owner = User::factory()->create();
+    $tenant = $owner->currentTenantOrFail();
 
     $integration = DiscordIntegration::query()->create([
+        'tenant_id' => $tenant->id,
         'owner_user_id' => $owner->id,
         'guild_id' => '123456789',
         'guild_name' => 'NWL Crew',
@@ -225,7 +236,9 @@ it('uses persisted oauth configuration for integration-specific redirects', func
 it('links a discord account and syncs mapped roles on callback', function (): void {
     $role = Role::query()->where('name', 'discord-member')->firstOrFail();
     $owner = User::factory()->create();
+    $tenant = $owner->currentTenantOrFail();
     $integration = DiscordIntegration::query()->create([
+        'tenant_id' => $tenant->id,
         'owner_user_id' => $owner->id,
         'guild_id' => '123456789',
         'guild_name' => 'NWL Crew',
