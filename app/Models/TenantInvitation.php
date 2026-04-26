@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 #[Fillable([
     'tenant_id',
@@ -82,5 +83,32 @@ class TenantInvitation extends Model
         }
 
         return 'pending';
+    }
+
+    public function frontendAcceptUrl(): string
+    {
+        return $this->replaceToken((string) config('tenancy.invitations.accept_url'));
+    }
+
+    public function frontendRegisterUrl(): string
+    {
+        return $this->appendTokenToUrl((string) config('tenancy.invitations.register_url'));
+    }
+
+    public function frontendLoginUrl(): string
+    {
+        return $this->appendTokenToUrl((string) config('tenancy.invitations.login_url'));
+    }
+
+    protected function appendTokenToUrl(string $url): string
+    {
+        $separator = str_contains($url, '?') ? '&' : '?';
+
+        return $this->replaceToken(Str::contains($url, '{token}') ? $url : $url . $separator . 'invitation=' . $this->token);
+    }
+
+    protected function replaceToken(string $url): string
+    {
+        return str_replace('{token}', $this->token, $url);
     }
 }

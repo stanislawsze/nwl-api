@@ -336,8 +336,29 @@ it('shows a public tenant invitation preview by token', function (): void {
         ->assertJsonPath('data.email', 'invitee@example.com')
         ->assertJsonPath('data.role', 'support')
         ->assertJsonPath('data.status', 'pending')
+        ->assertJsonPath('data.has_existing_account', false)
+        ->assertJsonPath('data.recommended_action', 'register')
         ->assertJsonPath('data.tenant.id', $tenant->id)
-        ->assertJsonPath('data.tenant.name', $tenant->name);
+        ->assertJsonPath('data.tenant.name', $tenant->name)
+        ->assertJsonPath('data.links.accept', $invitation->frontendAcceptUrl())
+        ->assertJsonPath('data.links.api.show', url('/api/v1/tenants/invitations/' . $invitation->token))
+        ->assertJsonPath('data.links.api.register', url('/api/v1/tenants/invitations/' . $invitation->token . '/register'))
+        ->assertJsonPath('data.links.api.accept', url('/api/v1/tenants/invitations/' . $invitation->token . '/accept'));
+});
+
+it('shows login as the recommended action when the invited email already has an account', function (): void {
+    $owner = User::factory()->create();
+    User::factory()->create([
+        'email' => 'invitee@example.com',
+    ]);
+    $service = app(TenancyService::class);
+    $service->ensurePersonalTenant($owner);
+    $invitation = $service->createInvitation($owner, 'invitee@example.com', 'support', 24);
+
+    getJson('/api/v1/tenants/invitations/' . $invitation->token)->assertOk()
+        ->assertJsonPath('data.has_existing_account', true)
+        ->assertJsonPath('data.recommended_action', 'login')
+        ->assertJsonPath('data.links.login', $invitation->frontendLoginUrl());
 });
 
 it('registers a new invited user and accepts the tenant invitation', function (): void {
